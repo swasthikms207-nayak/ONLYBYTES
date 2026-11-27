@@ -20,7 +20,10 @@ class TestDecideEndpoint(unittest.TestCase):
                 {"intent": "cancel_order", "confidence": 0.1},
             ],
         }
-        with patch("main.classify_intent", new=AsyncMock(return_value=mock_analysis)):
+        with patch("main.classify_intent", new=AsyncMock(return_value=mock_analysis)), patch(
+            "main.compute_similarity_margin",
+            return_value={"margin": 0.2, "top_intent": "order_status", "second_intent": "cancel_order"},
+        ):
             res = self.client.post(
                 "/decide",
                 json={"customer_id": "CUST_1001", "query": "Where is my order?"},
@@ -35,6 +38,8 @@ class TestDecideEndpoint(unittest.TestCase):
         self.assertEqual(body["threshold"], 0.6)
         self.assertIsNone(body["clarification"])
         self.assertIn("Success:", body["action_result"])
+        self.assertEqual(body["margin"], 0.2)
+        self.assertIn("ambiguity_score", body)
         self.assertEqual(len(decisions_log), 1)
         self.assertEqual(decisions_log[0]["customer_id"], "CUST_1001")
 
@@ -47,7 +52,10 @@ class TestDecideEndpoint(unittest.TestCase):
                 {"intent": "account_closure", "confidence": 0.35},
             ],
         }
-        with patch("main.classify_intent", new=AsyncMock(return_value=ambiguous_analysis)):
+        with patch("main.classify_intent", new=AsyncMock(return_value=ambiguous_analysis)), patch(
+            "main.compute_similarity_margin",
+            return_value={"margin": 0.02, "top_intent": "card_block", "second_intent": "account_closure"},
+        ):
             ask_res = self.client.post(
                 "/decide",
                 json={"customer_id": "CUST_1003", "query": "Sab band karo"},

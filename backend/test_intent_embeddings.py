@@ -8,7 +8,9 @@ import numpy as np
 
 from intent_embeddings import (
     MODEL_NAME,
+    compute_ambiguity_score,
     compute_and_cache_centroids,
+    compute_similarity_margin,
     query_centroid_similarities,
 )
 
@@ -73,6 +75,20 @@ class TestIntentEmbeddings(unittest.TestCase):
                 self.assertEqual(set(cached_centroids.keys()), {"order_status", "card_block"})
                 saved = json.loads(cache_file.read_text(encoding="utf-8"))
                 self.assertEqual(saved["model_name"], MODEL_NAME)
+
+    def test_margin_and_ambiguity_score(self):
+        with patch(
+            "intent_embeddings.query_centroid_similarities",
+            return_value={"card_block": 0.42, "account_closure": 0.39},
+        ):
+            margin_info = compute_similarity_margin("Band karo")
+            self.assertAlmostEqual(margin_info["margin"], 0.03, places=4)
+
+        high_amb = compute_ambiguity_score(top_llm_confidence=0.55, margin=0.03)
+        low_amb = compute_ambiguity_score(top_llm_confidence=0.95, margin=0.25)
+        self.assertGreater(high_amb, low_amb)
+        self.assertGreaterEqual(low_amb, 0.0)
+        self.assertLessEqual(high_amb, 1.0)
 
 
 if __name__ == "__main__":

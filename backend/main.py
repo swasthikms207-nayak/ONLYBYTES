@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
+from intent_embeddings import compute_ambiguity_score, compute_similarity_margin
 
 # Load environment variables from root .env (fallback to backend/.env)
 ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
@@ -233,6 +234,12 @@ async def decide_pipeline(request: DecideEndpointRequest):
             analysis=analysis,
             clarification_count=clarification_count,
         )
+        margin_info = compute_similarity_margin(effective_query)
+        margin = margin_info["margin"]
+        ambiguity_score = compute_ambiguity_score(
+            top_llm_confidence=decision_res["confidence"],
+            margin=margin,
+        )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except ValueError as exc:
@@ -264,6 +271,8 @@ async def decide_pipeline(request: DecideEndpointRequest):
         "reason": decision_res["reason"],
         "clarification": clarification,
         "action_result": action_result,
+        "margin": margin,
+        "ambiguity_score": ambiguity_score,
     }
 
     decisions_log.append(
