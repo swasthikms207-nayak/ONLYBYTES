@@ -1,13 +1,15 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Any, Dict, Literal
 
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from intent_classifier import IntentAnalysisResult, classify_intent
 
 # Load environment variables from root .env (fallback to backend/.env)
 ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
@@ -53,6 +55,12 @@ class IntentPolicy(BaseModel):
 
 class PolicyConfig(BaseModel):
     policies: Dict[str, IntentPolicy]
+
+
+class ClassifyRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    customer_data: Dict[str, Any] = Field(default_factory=dict)
+    chat_history: list[Dict[str, Any]] = Field(default_factory=list)
 
 
 def load_policy() -> PolicyConfig:
@@ -134,3 +142,23 @@ def get_policy():
 def update_policy(config: PolicyConfig):
     """Validate and persist an updated intent policy configuration."""
     return save_policy(config)
+
+
+@app.post("/api/classify", response_model=IntentAnalysisResult)
+async def classify(request: ClassifyRequest):
+    """Classify a customer query (English or Hinglish) into strict intent & ambiguity JSON."""
+    try:
+        return await classify_intent(
+            query=request.query,
+            customer_data=request.customer_data,
+            chat_history=request.chat_history,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"LLM provider error: {exc.response.text}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Classification failed: {exc}") from exc
