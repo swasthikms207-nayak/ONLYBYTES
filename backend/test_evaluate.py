@@ -6,11 +6,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from evaluate import (
+    PRIMARY_METRICS,
     check_quality_preserved,
     check_steering_control,
     check_visualizer_faithfulness,
     compute_ece,
     evaluate_system,
+    run_ablation,
     save_calibration_plot,
 )
 
@@ -130,6 +132,55 @@ class TestEvaluate(unittest.TestCase):
         ):
             vis_res = check_visualizer_faithfulness()
             self.assertGreaterEqual(vis_res["trustworthiness"], 0.9)
+
+    def test_ablation_reports_all_primary_metrics(self):
+        rows = [
+            {
+                "query": "Sab band karo",
+                "customer_id": "CUST_1003",
+                "is_ambiguous": "true",
+                "ambiguity_type": "lexical",
+                "correct_intent": "card_block",
+                "annotator2_label": "account_closure",
+            }
+        ]
+        predictions = [
+            {
+                "analysis": {
+                    "is_ambiguous": True,
+                    "ambiguity_type": "lexical",
+                    "candidate_intents": [
+                        {"intent": "account_closure", "confidence": 0.96},
+                        {"intent": "card_block", "confidence": 0.04},
+                    ],
+                },
+                "top_intent": "account_closure",
+                "top_confidence": 0.96,
+                "margin": 0.01,
+            }
+        ]
+        policies = {
+            "card_block": {"risk_tier": "high", "cost_weight": 10, "confidence_threshold": 0.95},
+            "account_closure": {"risk_tier": "high", "cost_weight": 10, "confidence_threshold": 0.95},
+            "order_status": {"risk_tier": "low", "cost_weight": 1, "confidence_threshold": 0.6},
+        }
+        fake_centroids = {
+            "card_block": np.array([1.0, 0.0, 0.0], dtype=np.float32),
+            "account_closure": np.array([0.0, 1.0, 0.0], dtype=np.float32),
+            "order_status": np.array([0.0, 0.0, 1.0], dtype=np.float32),
+        }
+        fake_model = MagicMock()
+        fake_model.encode.return_value = np.array([[0.3, 0.6, 0.1]], dtype=np.float32)
+
+        with patch("evaluate.compute_and_cache_centroids", return_value=fake_centroids), patch(
+            "evaluate.get_model", return_value=fake_model
+        ):
+            ablation = run_ablation(rows, predictions, policies)
+
+        for metric in PRIMARY_METRICS:
+            self.assertIn(metric, ablation["difference"])
+        self.assertGreater(ablation["difference"]["detection_f1"], 0.0)
+        self.assertLess(ablation["difference"]["cost_weighted_error"], 0.0)
 
 
 if __name__ == "__main__":

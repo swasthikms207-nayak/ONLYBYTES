@@ -140,6 +140,17 @@ def compute_ece(confidences: list[float], correct: list[int], n_bins: int = 10) 
     }
 
 
+PRIMARY_METRICS = (
+    "detection_precision",
+    "detection_recall",
+    "detection_f1",
+    "intent_accuracy",
+    "unnecessary_question_rate",
+    "cost_weighted_error",
+    "expected_calibration_error",
+)
+
+
 def evaluate_system(
     rows: list[dict[str, str]],
     predictions: list[dict[str, Any]],
@@ -167,12 +178,24 @@ def evaluate_system(
             decision = "ASK"
         elif system_name == "confidence_only":
             decision = "ACT" if top_conf >= FIXED_CONFIDENCE_THRESHOLD else "ASK"
+        elif system_name == "llm_only":
+            dec = decide_action(pred["analysis"], clarification_count=0)
+            decision = dec["decision"]
         elif system_name == "risk_aware_margin":
             dec = decide_action(pred["analysis"], clarification_count=0)
             decision = dec["decision"]
             risk_tier = dec["risk_tier"]
             if decision == "ACT" and risk_tier != "low" and margin < MARGIN_MIN_FOR_ACT:
                 decision = "ASK"
+        elif system_name == "llm_plus_margin_plus_steering":
+            dec = decide_action(pred["analysis"], clarification_count=0)
+            decision = dec["decision"]
+            risk_tier = dec["risk_tier"]
+            if decision == "ACT" and risk_tier != "low" and margin < MARGIN_MIN_FOR_ACT:
+                decision = "ASK"
+            if decision == "ASK" and "steered_intent" in pred:
+                top_intent = pred["steered_intent"]
+                top_conf = pred["steered_confidence"]
         else:
             raise ValueError(f"Unknown system: {system_name}")
 
@@ -299,6 +322,7 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
             "quality_preserved": check_quality_preserved(rows),
             "visualizer_faithfulness": check_visualizer_faithfulness(),
         },
+        "ablation": run_ablation(rows, predictions, policies),
     }
 
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -308,6 +332,50 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
 
     save_calibration_plot(system_results["risk_aware_margin"]["calibration_bins"])
     return results
+
+
+def run_ablation(
+    rows: list[dict[str, str]],
+    predictions: list[dict[str, Any]],
+    policies: dict[str, dict[str, Any]],
+    alpha: float = 0.5,
+) -> dict[str, Any]:
+    """Compare LLM-only gating vs LLM + embedding margin + steering across all primary metrics."""
+    centroids = compute_and_cache_centroids()
+    intent_names = list(centroids.keys())
+    model = get_model()
+
+    enriched_preds = []
+    for row, pred in zip(rows, predictions):
+        item = dict(pred)
+        target = row["correct_intent"].strip()
+        source = pred["top_intent"] if pred["top_intent"] != target else (
+            "order_status" if target != "order_status" else "card_block"
+        )
+        vec_before = _l2_normalize(
+            np.asarray(model.encode([row["query"]], normalize_embeddings=True)[0], dtype=np.float32)
+        )
+        vec_after = _l2_normalize(vec_before + alpha * (centroids[target] - centroids[source]))
+        sims = np.array([float(np.dot(vec_after, centroids[n])) for n in intent_names])
+        scaled = sims * 12.0
+        exp_v = np.exp(scaled - np.max(scaled))
+        probs = exp_v / np.sum(exp_v)
+        best_idx = int(np.argmax(probs))
+        item["steered_intent"] = intent_names[best_idx]
+        item["steered_confidence"] = round(float(probs[best_idx]), 4)
+        enriched_preds.append(item)
+
+    llm_only = evaluate_system(rows, enriched_preds, policies, "llm_only")
+    full = evaluate_system(rows, enriched_preds, policies, "llm_plus_margin_plus_steering")
+    diff = {
+        metric: round(full[metric] - llm_only[metric], 4)
+        for metric in PRIMARY_METRICS
+    }
+    return {
+        "llm_only": llm_only,
+        "llm_plus_margin_plus_steering": full,
+        "difference": diff,
+    }
 
 
 def check_steering_control(
