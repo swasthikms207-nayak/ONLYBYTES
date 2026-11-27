@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
 
 # Load environment variables from root .env (fallback to backend/.env)
@@ -61,6 +62,11 @@ class ClassifyRequest(BaseModel):
     query: str = Field(..., min_length=1)
     customer_data: Dict[str, Any] = Field(default_factory=dict)
     chat_history: list[Dict[str, Any]] = Field(default_factory=list)
+
+
+class DecideRequest(BaseModel):
+    analysis: IntentAnalysisResult
+    clarification_count: int = Field(default=0, ge=0)
 
 
 def load_policy() -> PolicyConfig:
@@ -162,3 +168,15 @@ async def classify(request: ClassifyRequest):
         ) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Classification failed: {exc}") from exc
+
+
+@app.post("/api/decide", response_model=DecisionResult)
+def decide(request: DecideRequest):
+    """Return ACT, ASK, or ESCALATE based on top candidate confidence vs policy threshold."""
+    try:
+        return decide_action(
+            analysis=request.analysis.model_dump(),
+            clarification_count=request.clarification_count,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
