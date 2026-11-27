@@ -160,17 +160,17 @@ textarea {
   border: 1px solid #3f3f46;
 }
 
-.status-resolved {
+.status-AUTO_ACCEPT {
   color: #22c55e;
   border-color: #22c55e;
 }
 
-.status-ambiguous {
+.status-ACCEPT_WITH_ALTERNATIVES {
   color: #eab308;
   border-color: #eab308;
 }
 
-.status-needs_review {
+.status-REVIEW {
   color: #ef4444;
   border-color: #ef4444;
 }

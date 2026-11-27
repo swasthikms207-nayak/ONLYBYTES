@@ -37,7 +37,7 @@ def health():
 
 
 @app.post("/process", response_model=ProcessResponse)
-def process_records(request: ProcessRequest):
+async def process_records(request: ProcessRequest):
     """Process a batch of text records (from pasted text, CSV string, or records list)."""
     items: list[str] = []
     if request.records:
@@ -51,5 +51,5 @@ def process_records(request: ProcessRequest):
     if not items:
         raise HTTPException(status_code=400, detail="No valid text records provided.")
 
-    results = resolve_batch(items)
+    results = await resolve_batch(items)
     return {"count": len(results), "results": results}

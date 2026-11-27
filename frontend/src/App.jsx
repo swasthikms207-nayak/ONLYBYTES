@@ -63,9 +63,9 @@ export default function App() {
     }
   }
 
-  const resolvedCount = results.filter((r) => r.status === "resolved").length;
-  const ambiguousCount = results.filter((r) => r.status === "ambiguous").length;
-  const reviewCount = results.filter((r) => r.status === "needs_review").length;
+  const autoAcceptCount = results.filter((r) => r.status === "AUTO_ACCEPT").length;
+  const acceptAltCount = results.filter((r) => r.status === "ACCEPT_WITH_ALTERNATIVES").length;
+  const reviewCount = results.filter((r) => r.status === "REVIEW").length;
 
   return (
     <main className="container">
@@ -137,9 +137,11 @@ export default function App() {
           <div className="results-header">
             <div className="summary-pills">
               <span className="pill">Total: {results.length}</span>
-              <span className="pill status-resolved">Resolved: {resolvedCount}</span>
-              <span className="pill status-ambiguous">Ambiguous: {ambiguousCount}</span>
-              <span className="pill status-needs_review">Needs Review: {reviewCount}</span>
+              <span className="pill status-AUTO_ACCEPT">AUTO_ACCEPT: {autoAcceptCount}</span>
+              <span className="pill status-ACCEPT_WITH_ALTERNATIVES">
+                ACCEPT_WITH_ALTERNATIVES: {acceptAltCount}
+              </span>
+              <span className="pill status-REVIEW">REVIEW: {reviewCount}</span>
             </div>
             <button
               type="button"
@@ -162,6 +164,7 @@ export default function App() {
                     <th>Top Reading</th>
                     <th>Alternatives</th>
                     <th>Confidence</th>
+                    <th>Disagreement / Conflict</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -188,6 +191,10 @@ export default function App() {
                         )}
                       </td>
                       <td>{Math.round(row.confidence * 100)}%</td>
+                      <td>
+                        {Math.round((row.disagreement || 0) * 100)}%
+                        {row.conflict ? " · conflict" : ""}
+                      </td>
                       <td>
                         <span className={`status-badge status-${row.status}`}>{row.status}</span>
                       </td>
