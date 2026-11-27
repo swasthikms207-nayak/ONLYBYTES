@@ -1,0 +1,63 @@
+{
+  "architectures": [
+    "DebertaV2ForSequenceClassification"
+  ],
+  "attention_probs_dropout_prob": 0.1,
+  "bos_token_id": null,
+  "dtype": "float32",
+  "eos_token_id": null,
+  "hidden_act": "gelu",
+  "hidden_dropout_prob": 0.1,
+  "hidden_size": 768,
+  "id2label": {
+    "0": "lexical",
+    "1": "syntactic",
+    "2": "referential",
+    "3": "scope",
+    "4": "semantic",
+    "5": "pragmatic",
+    "6": "underspecified",
+    "7": "ellipsis",
+    "8": "temporal_numeric",
+    "9": "cultural_domain"
+  },
+  "initializer_range": 0.02,
+  "intermediate_size": 3072,
+  "label2id": {
+    "cultural_domain": 9,
+    "ellipsis": 7,
+    "lexical": 0,
+    "pragmatic": 5,
+    "referential": 2,
+    "scope": 3,
+    "semantic": 4,
+    "syntactic": 1,
+    "temporal_numeric": 8,
+    "underspecified": 6
+  },
+  "layer_norm_eps": 1e-07,
+  "legacy": true,
+  "max_position_embeddings": 512,
+  "max_relative_positions": -1,
+  "model_type": "deberta-v2",
+  "norm_rel_ebd": "layer_norm",
+  "num_attention_heads": 12,
+  "num_hidden_layers": 6,
+  "pad_token_id": 0,
+  "pooler_dropout": 0.0,
+  "pooler_hidden_act": "gelu",
+  "pooler_hidden_size": 768,
+  "pos_att_type": [
+    "p2c",
+    "c2p"
+  ],
+  "position_biased_input": false,
+  "position_buckets": 256,
+  "problem_type": "multi_label_classification",
+  "relative_attention": true,
+  "share_att_key": true,
+  "tie_word_embeddings": true,
+  "transformers_version": "5.24.1",
+  "type_vocab_size": 0,
+  "vocab_size": 128100
+}

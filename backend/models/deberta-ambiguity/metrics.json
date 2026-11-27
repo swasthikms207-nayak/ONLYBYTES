@@ -1,0 +1,24 @@
+{
+  "base_model": "microsoft/deberta-v3-small",
+  "labels": [
+    "lexical",
+    "syntactic",
+    "referential",
+    "scope",
+    "semantic",
+    "pragmatic",
+    "underspecified",
+    "ellipsis",
+    "temporal_numeric",
+    "cultural_domain"
+  ],
+  "epochs": 80,
+  "val_metrics": {
+    "micro_f1": 0.5052,
+    "macro_f1": 0.4664
+  },
+  "test_metrics": {
+    "micro_f1": 0.5049,
+    "macro_f1": 0.5036
+  }
+}

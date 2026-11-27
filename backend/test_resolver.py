@@ -101,6 +101,11 @@ class TestResolver(unittest.TestCase):
         self.assertTrue(first["conflict"])
         self.assertAlmostEqual(first["disagreement"], 0.2, places=4)
         self.assertEqual(first["status"], "REVIEW")
+        self.assertEqual(len(first["resolution_steps"]), 7)
+        self.assertEqual([s["step"] for s in first["resolution_steps"]], [1, 2, 3, 4, 5, 6, 7])
+        for s in first["resolution_steps"]:
+            self.assertIn("action", s)
+            self.assertIn("result", s)
 
         second = out[1]
         self.assertEqual(second["ambiguity_type"], "none")

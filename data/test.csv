@@ -1,0 +1,91 @@
+id,text,context,types,span,readings,gold_reading,is_ambiguous
+41,Update my delivery address to Koramangala Bengaluru.,,"[""none""]",,"[""Update my delivery address to Koramangala Bengaluru.""]",Update my delivery address to Koramangala Bengaluru.,false
+33,Could you send 1000 next Friday?,,"[""pragmatic"", ""temporal_numeric""]",Could you,"[""Please send USD 1000 on the upcoming Friday"", ""Questioning ability to send""]",Please send USD 1000 on the upcoming Friday,true
+375,Inspect the model weights,Document section 1378: Context note 1378.,"[""cultural_domain""]",model,"[""Inspect the machine learning model weights"", ""Inspect the CAD/3D model parameters""]",Inspect the machine learning model weights,true
+34,The port is blocked,,"[""lexical"", ""cultural_domain""]",port,"[""The TCP/UDP network port is blocked"", ""The shipping harbor port is blocked""]",The TCP/UDP network port is blocked,true
+22,Transfer 250 today,,"[""temporal_numeric""]",Transfer 250,"[""Transfer USD 250 today"", ""Transfer INR 250 today""]",Transfer USD 250 today,true
+37,The Earth orbits the Sun once every year.,,"[""none""]",,"[""The Earth orbits the Sun once every year.""]",The Earth orbits the Sun once every year.,false
+470,Three engineers built a prototype [#1473],,"[""semantic""]",engineers ... built,"[""Three engineers collaborated on one prototype"", ""Each of the three engineers built a prototype""]",Three engineers collaborated on one prototype,true
+107,Block my Visa debit card ending in 1076.,,"[""none""]",,"[""Block my Visa debit card ending in 1076.""]",Block my Visa debit card ending in 1076.,false
+178,Track shipment for order ORD_1179.,Support log #1179: verified request.,"[""none""]",,"[""Track shipment for order ORD_1179.""]",Track shipment for order ORD_1179.,false
+1,I saw the man with the telescope,,"[""lexical"", ""syntactic""]",with the telescope,"[""I used a telescope to see the man"", ""I saw the man who had a telescope""]",I used a telescope to see the man,true
+47,The database migration finished in 420 milliseconds.,,"[""none""]",,"[""The database migration finished in 420 milliseconds.""]",The database migration finished in 420 milliseconds.,false
+24,The MS team shipped a patch,,"[""cultural_domain"", ""underspecified""]",MS,"[""The Microsoft team shipped a patch"", ""The Master of Science team shipped a patch""]",The Microsoft team shipped a patch,true
+428,Cancel it before dispatch,Customer note (1431): Context note 1431.,"[""referential""]",it,"[""Cancel the latest pending order before dispatch"", ""Cancel the saved payment method before dispatch""]",Cancel the latest pending order before dispatch,true
+207,Visiting relatives can be boring,Document metadata #1210 points toward the secondary interpretation.,"[""syntactic""]",Visiting relatives,"[""Going to visit relatives can be boring"", ""Relatives who come to visit can be boring""]",Going to visit relatives can be boring,true
+35,Check the spring configuration,,"[""lexical"", ""cultural_domain""]",spring,"[""Check the Java Spring framework config"", ""Check the mechanical spring config""]",Check the Java Spring framework config,true
+471,Can you pass the salt?,Earlier in the support chat: Context note 1474.,"[""pragmatic""]",Can you,"[""Please pass the salt (polite request)"", ""Are you physically able to pass the salt? (literal)""]",Please pass the salt (polite request),true
+32,Two chefs cooked five dishes,,"[""semantic"", ""scope""]",chefs ... cooked,"[""Two chefs collaborated on five dishes total"", ""Each chef cooked five dishes""]",Two chefs collaborated on five dishes total,true
+27,Cancel it before dispatch,I ordered headphones ORD_5519 yesterday,"[""referential""]",it,"[""Cancel headphones ORD_5519 before dispatch"", ""Cancel the billing profile""]",Cancel headphones ORD_5519 before dispatch,true
+281,Can you pass the salt?,Document section 1284: Context note 1284.,"[""pragmatic""]",Can you,"[""Please pass the salt (polite request)"", ""Are you physically able to pass the salt? (literal)""]",Please pass the salt (polite request),true
+50,The train from Mumbai to Pune departed at 07:15 AM.,,"[""none""]",,"[""The train from Mumbai to Pune departed at 07:15 AM.""]",The train from Mumbai to Pune departed at 07:15 AM.,false
+182,Update my shipping address to Indiranagar Bengaluru #1184.,Support log #1184: verified request.,"[""none""]",,"[""Update my shipping address to Indiranagar Bengaluru #1184.""]",Update my shipping address to Indiranagar Bengaluru #1184.,false
+18,Cancel please,,"[""underspecified""]",Cancel,"[""Cancel the pending order"", ""Cancel the subscription""]",Cancel the pending order,true
+420,The students carried the piano,Document section 1423: Context note 1423.,"[""semantic""]",students ... carried,"[""The students carried the piano together (collective)"", ""Each student carried a piano individually (distributive)""]",The students carried the piano together (collective),true
+458,John told Bill that he would come,Customer note (1461): Context note 1461.,"[""referential"", ""syntactic""]",he,"[""John told Bill that John would come"", ""John told Bill that Bill would come""]",John told Bill that John would come,true
+23,Check the kernel logs,,"[""cultural_domain""]",kernel,"[""Check the Linux OS kernel logs"", ""Check the ML kernel computation logs""]",Check the Linux OS kernel logs,true
+216,The seal was broken on arrival,Document metadata #1219 points toward the secondary interpretation.,"[""lexical""]",seal,"[""The security stamp was broken on arrival"", ""The marine animal was injured on arrival""]",The security stamp was broken on arrival,true
+43,The invoice #INV-2026-041 was paid on 2026-04-10.,,"[""none""]",,"[""The invoice #INV-2026-041 was paid on 2026-04-10.""]",The invoice #INV-2026-041 was paid on 2026-04-10.,false
+511,It's cold in here,Customer note (1514): Context note 1514.,"[""pragmatic""]",It's cold,"[""Please close the window or turn on heat"", ""Stating the room temperature literally""]",Please close the window or turn on heat,true
+36,Water freezes at 0 degrees Celsius.,,"[""none""]",,"[""Water freezes at 0 degrees Celsius.""]",Water freezes at 0 degrees Celsius.,false
+3,Meet me next Monday,,"[""temporal_numeric""]",next Monday,"[""The upcoming Monday"", ""The Monday of the following week""]",The upcoming Monday,true
+362,Cancel please [#1365],,"[""underspecified""]",Cancel,"[""Cancel the latest pending order"", ""Cancel the active subscription""]",Cancel the latest pending order,true
+8,Visiting relatives can be tiring,,"[""syntactic""]",Visiting relatives,"[""Going to visit relatives can be tiring"", ""Relatives who visit can be tiring""]",Going to visit relatives can be tiring,true
+139,Block my Visa debit card ending in 1124.,,"[""none""]",,"[""Block my Visa debit card ending in 1124.""]",Block my Visa debit card ending in 1124.,false
+528,Rohan met Amit when he was in Delhi,Document section 1531: Context note 1531.,"[""referential""]",he,"[""Rohan met Amit when Rohan was in Delhi"", ""Rohan met Amit when Amit was in Delhi""]",Rohan met Amit when Amit was in Delhi,true
+2,Every student read a book,,"[""scope""]",Every ... a,"[""Each student read some book"", ""All students read the same book""]",Each student read some book,true
+403,John runs faster than Bill,From ticket #TKT-1406: Context note 1406.,"[""ellipsis"", ""temporal_numeric""]",than Bill,"[""John runs faster than Bill runs"", ""John runs faster than Bill walks""]",John runs faster than Bill runs,true
+118,Permanently close my OnlyBytes user account #1090.,,"[""none""]",,"[""Permanently close my OnlyBytes user account #1090.""]",Permanently close my OnlyBytes user account #1090.,false
+219,Sab band kar do abhi,Note 1222: the user previously asked about the opposite option.,"[""scope""]",Sab,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
+7,Flying planes can be dangerous,,"[""syntactic""]",Flying planes,"[""Piloting planes can be dangerous"", ""Planes that are flying can be dangerous""]",Piloting planes can be dangerous,true
+16,It's freezing in this room,,"[""pragmatic""]",It's freezing,"[""Please turn up the heat"", ""Observation about low temperature""]",Please turn up the heat,true
+183,Permanently close my OnlyBytes user account #1185.,,"[""none""]",,"[""Permanently close my OnlyBytes user account #1185.""]",Permanently close my OnlyBytes user account #1185.,false
+26,He swung the bat in the dark,,"[""lexical""]",bat,"[""He swung the wooden sports bat"", ""He swung at the flying mammal""]",He swung the wooden sports bat,true
+45,Our next quarterly review is on 2026-07-01 at 10:00 AM.,,"[""none""]",,"[""Our next quarterly review is on 2026-07-01 at 10:00 AM.""]",Our next quarterly review is on 2026-07-01 at 10:00 AM.,false
+126,Update my shipping address to Indiranagar Bengaluru #1101.,,"[""none""]",,"[""Update my shipping address to Indiranagar Bengaluru #1101.""]",Update my shipping address to Indiranagar Bengaluru #1101.,false
+12,He did not resign because of pay,,"[""scope""]",not ... because,"[""He resigned for another reason"", ""He stayed because of the pay""]",He resigned for another reason,true
+31,Priya saw Meera with her binoculars,,"[""syntactic"", ""referential""]",with her binoculars,"[""Priya used binoculars to see Meera"", ""Priya saw Meera who had binoculars""]",Priya used binoculars to see Meera,true
+341,Could you open the report?,Customer note (1344): Context note 1344.,"[""pragmatic""]",Could you,"[""Please open the report now"", ""Asking whether you have permission to open it""]",Please open the report now,true
+6,Priya likes Ravi more than Meera,,"[""ellipsis"", ""referential""]",than Meera,"[""Priya likes Ravi more than Priya likes Meera"", ""Priya likes Ravi more than Meera likes Ravi""]",Priya likes Ravi more than Priya likes Meera,true
+4,05/06/2026,,"[""temporal_numeric""]",05/06/2026,"[""2026-06-05 (DD/MM/YYYY)"", ""2026-05-06 (MM/DD/YYYY)""]",2026-06-05 (DD/MM/YYYY),true
+13,The students carried the piano,,"[""semantic""]",students ... carried,"[""The students carried the piano together"", ""Each student carried a piano""]",The students carried the piano together,true
+42,Please share the courier tracking link for ORD_9021.,,"[""none""]",,"[""Please share the courier tracking link for ORD_9021.""]",Please share the courier tracking link for ORD_9021.,false
+40,Reverse duplicate UPI payment TXN_88310.,,"[""none""]",,"[""Reverse duplicate UPI payment TXN_88310.""]",Reverse duplicate UPI payment TXN_88310.,false
+39,Block my Visa debit card ending in 4410.,,"[""none""]",,"[""Block my Visa debit card ending in 4410.""]",Block my Visa debit card ending in 4410.,false
+381,"Oh great, another delay",Earlier in the support chat: Context note 1384.,"[""pragmatic""]",Oh great,"[""Expressing frustration sarcastically about the delay"", ""Expressing genuine happiness about the delay""]",Expressing frustration sarcastically about the delay,true
+25,She went to the bank after work,,"[""lexical""]",bank,"[""She went to the financial bank"", ""She went to the river bank""]",She went to the financial bank,true
+565,Inspect the model weights,Customer note (1568): Context note 1568.,"[""cultural_domain""]",model,"[""Inspect the machine learning model weights"", ""Inspect the CAD/3D model parameters""]",Inspect the machine learning model weights,true
+48,Mount Everest is 8848 meters above sea level.,,"[""none""]",,"[""Mount Everest is 8848 meters above sea level.""]",Mount Everest is 8848 meters above sea level.,false
+307,I saw the man with the telescope,From ticket #TKT-1310: Context note 1310.,"[""syntactic""]",man with the telescope,"[""I used a telescope to see the man"", ""I saw the man who was holding a telescope""]",I used a telescope to see the man,true
+21,Call me at 6,,"[""temporal_numeric""]",at 6,"[""Call me at 6:00 PM"", ""Call me at 6:00 AM""]",Call me at 6:00 PM,true
+17,"Oh great, the server crashed again",,"[""pragmatic""]",Oh great,"[""Sarcastic frustration about server crash"", ""Genuine praise""]",Sarcastic frustration about server crash,true
+38,Track shipment for order ORD_7712.,,"[""none""]",,"[""Track shipment for order ORD_7712.""]",Track shipment for order ORD_7712.,false
+10,John told Bill that he won,,"[""referential""]",he,"[""John told Bill that John won"", ""John told Bill that Bill won""]",John told Bill that John won,true
+556,She noticed the bat in the hall,From ticket #TKT-1559: Context note 1559.,"[""lexical""]",bat,"[""She noticed the flying mammal in the hall"", ""She noticed the wooden sports bat in the hall""]",She noticed the flying mammal in the hall,true
+14,Three movers lifted the sofa,,"[""semantic""]",movers ... lifted,"[""Three movers lifted the sofa together"", ""Each mover lifted a sofa""]",Three movers lifted the sofa together,true
+405,Check the kernel configuration,Document section 1408: Context note 1408.,"[""cultural_domain""]",kernel,"[""Check the OS Linux kernel configuration"", ""Check the ML SVM kernel configuration""]",Check the OS Linux kernel configuration,true
+494,Schedule the call at 5,Earlier in the support chat: Context note 1497.,"[""temporal_numeric""]",at 5,"[""Schedule the call at 5:00 PM"", ""Schedule the call at 5:00 AM""]",Schedule the call at 5:00 PM,true
+179,Permanently close my OnlyBytes user account #1180.,Support log #1180: verified request.,"[""none""]",,"[""Permanently close my OnlyBytes user account #1180.""]",Permanently close my OnlyBytes user account #1180.,false
+529,Every student read a book,Document section 1532: Context note 1532.,"[""scope""]",Every ... a,"[""Each student read a possibly different book"", ""All students read the exact same book""]",Each student read a possibly different book,true
+580,The workers lifted the heavy crate,Customer note (1583): Context note 1583.,"[""semantic""]",workers ... lifted,"[""The workers lifted the crate together"", ""Each worker lifted the crate separately""]",The workers lifted the crate together,true
+49,She submitted her tax return before 2026-04-15.,,"[""none""]",,"[""She submitted her tax return before 2026-04-15.""]",She submitted her tax return before 2026-04-15.,false
+19,Send the report soon,,"[""underspecified""]",the report,"[""Send the Q4 report today"", ""Send the status report next week""]",Send the Q4 report today,true
+367,Old men and women sat outside,Earlier in the support chat: Context note 1370.,"[""syntactic""]",Old men and women,"[""Elderly men and elderly women sat outside"", ""Elderly men and women of any age sat outside""]",Elderly men and elderly women sat outside,true
+541,"Oh great, another delay",Document section 1544: Context note 1544.,"[""pragmatic""]",Oh great,"[""Expressing frustration sarcastically about the delay"", ""Expressing genuine happiness about the delay""]",Expressing frustration sarcastically about the delay,true
+9,Old men and women left early,,"[""syntactic""]",Old men and women,"[""Elderly men and elderly women left early"", ""Elderly men and women of any age left early""]",Elderly men and elderly women left early,true
+46,Permanently delete my OnlyBytes test workspace.,,"[""none""]",,"[""Permanently delete my OnlyBytes test workspace.""]",Permanently delete my OnlyBytes test workspace.,false
+15,Can you close the door?,,"[""pragmatic""]",Can you,"[""Please close the door"", ""Are you able to close the door?""]",Please close the door,true
+30,Sab band kar do abhi,,"[""scope"", ""underspecified""]",Sab,"[""Block/cancel all active items on the account"", ""Cancel only the latest order""]",Block/cancel all active items on the account,true
+20,Alice can code and so can Bob,,"[""ellipsis""]",so can Bob,"[""Alice can code and Bob can code too"", ""Bob can code better""]",Alice can code and Bob can code too,true
+77,Reverse the duplicate UPI payment TXN_1037.,Support log #1037: verified request.,"[""none""]",,"[""Reverse the duplicate UPI payment TXN_1037.""]",Reverse the duplicate UPI payment TXN_1037.,false
+131,Track shipment for order ORD_1110.,,"[""none""]",,"[""Track shipment for order ORD_1110.""]",Track shipment for order ORD_1110.,false
+151,Block my Visa debit card ending in 1142.,,"[""none""]",,"[""Block my Visa debit card ending in 1142.""]",Block my Visa debit card ending in 1142.,false
+589,Sab band kar do abhi,From ticket #TKT-1592: Context note 1592.,"[""scope"", ""ellipsis"", ""underspecified""]",Sab,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
+237,Old men and women sat outside,Note 1240: the user previously asked about the opposite option.,"[""syntactic""]",Old men and women,"[""Elderly men and elderly women sat outside"", ""Elderly men and women of any age sat outside""]",Elderly men and elderly women sat outside,true
+28,Close it now,My Visa card was stolen on the train,"[""referential"", ""lexical""]",it,"[""Block the stolen Visa card now"", ""Close the user account""]",Block the stolen Visa card now,true
+11,Everyone did not pass the test,,"[""scope""]",Everyone ... not,"[""Not everyone passed the test"", ""Nobody passed the test""]",Not everyone passed the test,true
+29,The model needs retraining,,"[""cultural_domain"", ""underspecified""]",model,"[""The ML model needs retraining"", ""The fashion model needs coaching""]",The ML model needs retraining,true
+586,Block the charge right now,Document section 1589: Context note 1589.,"[""lexical""]",charge,"[""Block the credit card fee right now"", ""Stop the electrical/physical charge right now""]",Block the credit card fee right now,true
+595,Inspect the model weights,From ticket #TKT-1598: Context note 1598.,"[""cultural_domain""]",model,"[""Inspect the machine learning model weights"", ""Inspect the CAD/3D model parameters""]",Inspect the machine learning model weights,true
+5,Table the motion,,"[""lexical"", ""cultural_domain""]",Table,"[""Postpone the motion"", ""Present the motion for immediate debate""]",Postpone the motion,true
+44,Python 3.12 is installed in the backend environment.,,"[""none""]",,"[""Python 3.12 is installed in the backend environment.""]",Python 3.12 is installed in the backend environment.,false
