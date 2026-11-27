@@ -1,0 +1,81 @@
+query,customer_id,is_ambiguous,ambiguity_type,correct_intent,annotator2_label
+"Can you check when my Mechanical Keyboard will arrive?",CUST_1001,false,none,order_status,order_status
+"Mera keyboard kab tak deliver hoga?",CUST_1001,false,none,order_status,order_status
+"Track shipment for order ORD_5519",CUST_1002,false,none,order_status,order_status
+"USB-C hub ka delivery status dikhao",CUST_1003,false,none,order_status,order_status
+"Where is my Noise Cancelling Headphones package?",CUST_1002,false,none,order_status,order_status
+"Has my refund for the cancelled mouse been credited?",CUST_1001,false,none,refund_status,refund_status
+"Mera refund kab tak bank mein aayega?",CUST_1002,false,none,refund_status,refund_status
+"Please share the refund timeline for my returned item",CUST_1003,false,none,refund_status,refund_status
+"Did my refund go through yet?",CUST_1001,false,none,refund_status,refund_status
+"Update my delivery pin code to 560001 for future orders",CUST_1001,false,none,change_address,change_address
+"Mera naya ghar ka address save kar lo",CUST_1002,false,none,change_address,change_address
+"Switch shipping location of ORD_5519 to Bandra East",CUST_1002,false,none,change_address,change_address
+"Change my billing address to Sector 62 Noida",CUST_1003,false,none,change_address,change_address
+"Please cancel my Mechanical Keyboard order ORD_5501",CUST_1001,false,none,cancel_order,cancel_order
+"ORD_5519 cancel kar do, abhi dispatch nahi hua",CUST_1002,false,none,cancel_order,cancel_order
+"Cancel my USB-C hub purchase before delivery",CUST_1003,false,none,cancel_order,cancel_order
+"Mera headphones order turant cancel karo",CUST_1002,false,none,cancel_order,cancel_order
+"Reverse the duplicate UPI payment TXN_90421",CUST_1001,false,none,payment_reversal,payment_reversal
+"TXN_90421 ka extra paisa wapas reverse karo",CUST_1001,false,none,payment_reversal,payment_reversal
+"Please roll back the double debit from OnlyBytes Electronics",CUST_1001,false,none,payment_reversal,payment_reversal
+"Mera failed UPI charge turant reverse karwa do",CUST_1002,false,none,payment_reversal,payment_reversal
+"Permanently close my OnlyBytes wallet and profile",CUST_1001,false,none,account_closure,account_closure
+"Mera OnlyBytes account hamesha ke liye band kar do",CUST_1002,false,none,account_closure,account_closure
+"Delete my user account and wipe my saved data",CUST_1003,false,none,account_closure,account_closure
+"How do I shut down my profile permanently?",CUST_1001,false,none,account_closure,account_closure
+"Freeze my debit card ending in 1194 right away",CUST_1003,false,none,card_block,card_block
+"Mera credit card 4821 block kar do, wallet kho gaya",CUST_1002,false,none,card_block,card_block
+"Disable my Visa card immediately due to theft",CUST_1001,false,none,card_block,card_block
+"Debit card turant hotlist karo please",CUST_1003,false,none,card_block,card_block
+"Dispute the 14500 INR charge from Unknown Digital Store",CUST_1003,false,none,transaction_dispute,transaction_dispute
+"TXN_90512 maine authorize nahi kiya, fraud report karo",CUST_1003,false,none,transaction_dispute,transaction_dispute
+"Raise a chargeback for the unrecognized debit TXN_90512",CUST_1003,false,none,transaction_dispute,transaction_dispute
+"Reverse that duplicate charge right now",CUST_1001,true,referential,payment_reversal,payment_reversal
+"Usko jaldi wapas bhejo account mein",CUST_1001,true,referential,payment_reversal,refund_status
+"Office pe deliver karwa do isko",CUST_1002,true,referential,change_address,change_address
+"Block that card immediately!",CUST_1003,true,referential,card_block,card_block
+"Cancel kar do ye wala abhi",CUST_1002,true,referential,cancel_order,cancel_order
+"Ye unknown payment maine nahi kiya, isko dekho",CUST_1003,true,referential,transaction_dispute,transaction_dispute
+"Iska status batao kab aayega",CUST_1001,true,referential,order_status,order_status
+"Woh wala refund abhi tak nahi mila",CUST_1001,true,referential,refund_status,refund_status
+"Please fix that wrong charge from yesterday",CUST_1001,true,referential,payment_reversal,transaction_dispute
+"Isko band karo, maine nahi kharida",CUST_1003,true,referential,transaction_dispute,card_block
+"Stop it before it ships",CUST_1002,true,referential,cancel_order,cancel_order
+"Change it to my work location",CUST_1002,true,referential,change_address,change_address
+"Mera paisa atak gaya hai, kuch karo",CUST_1001,true,underspecified,payment_reversal,refund_status
+"Need help with my recent purchase",CUST_1002,true,underspecified,order_status,cancel_order
+"Something is wrong with my account",CUST_1003,true,underspecified,transaction_dispute,card_block
+"Please update my details",CUST_1002,true,underspecified,change_address,change_address
+"Mera kaam jaldi niptao, paisa kat gaya",CUST_1001,true,underspecified,payment_reversal,payment_reversal
+"I want to stop using this",CUST_1001,true,underspecified,account_closure,account_closure
+"Card mein issue aa raha hai",CUST_1003,true,underspecified,card_block,transaction_dispute
+"Delivery ka kya scene hai?",CUST_1003,true,underspecified,order_status,order_status
+"Paisa wapas chahiye mujhe",CUST_1001,true,underspecified,payment_reversal,refund_status
+"Can you handle my pending request?",CUST_1002,true,underspecified,change_address,order_status
+"Sab band kar do abhi",CUST_1003,true,lexical,card_block,account_closure
+"Mera card aur account dono check karo aur band karo",CUST_1003,true,scope,card_block,account_closure
+"Cancel everything pending on my profile",CUST_1001,true,scope,cancel_order,payment_reversal
+"Block all my cards and stop the order too",CUST_1003,true,scope,card_block,cancel_order
+"Saare pending transactions aur orders rok do",CUST_1001,true,scope,payment_reversal,cancel_order
+"Reverse all charges from this week",CUST_1001,true,scope,payment_reversal,transaction_dispute
+"Change address for all my active orders",CUST_1002,true,scope,change_address,change_address
+"Delete everything and refund my money",CUST_1001,true,scope,account_closure,refund_status
+"Band karo ye sab natak",CUST_1003,true,lexical,card_block,account_closure
+"Close it down right now",CUST_1003,true,lexical,card_block,account_closure
+"Return my money or cancel the thing",CUST_1002,true,lexical,cancel_order,refund_status
+"Mera payment clear karo ya wapas do",CUST_1001,true,lexical,payment_reversal,refund_status
+"Freeze karo jaldi",CUST_1003,true,lexical,card_block,account_closure
+"Shift my stuff to another place",CUST_1002,true,lexical,change_address,change_address
+"Drop my order and close the wallet",CUST_1001,true,scope,cancel_order,account_closure
+"Stop the charge and lock my card",CUST_1003,true,scope,card_block,transaction_dispute
+"Great, charged twice again! Fix this mess",CUST_1001,true,pragmatic,payment_reversal,payment_reversal
+"Wah, 14500 kat gaye aur mujhe pata bhi nahi",CUST_1003,true,pragmatic,transaction_dispute,transaction_dispute
+"Guess I am never getting my headphones then?",CUST_1002,true,pragmatic,order_status,refund_status
+"Are you guys planning to keep my money forever?",CUST_1001,true,pragmatic,refund_status,payment_reversal
+"Nice service, my wallet is gone and someone is shopping",CUST_1003,true,pragmatic,card_block,transaction_dispute
+"Abhi tak parcel nahi aaya, rehne hi do ab",CUST_1002,true,pragmatic,cancel_order,order_status
+"Bahut badhiya, galat jagah bhej rahe ho parcel",CUST_1002,true,pragmatic,change_address,change_address
+"I think I am done with your platform for good",CUST_1001,true,pragmatic,account_closure,account_closure
+"Kya mazaak hai, bina puche paise nikal liye",CUST_1003,true,pragmatic,transaction_dispute,transaction_dispute
+"Kitna time aur lagega bhai, thak gaya wait karke",CUST_1001,true,pragmatic,order_status,refund_status
