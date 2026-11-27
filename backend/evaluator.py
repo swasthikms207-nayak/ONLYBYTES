@@ -287,23 +287,29 @@ async def _eval_row_with_api(
 
     async with sem:
         for _, api_key, base_url, model in providers:
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    alone_res = await _call_llm_once(client, api_key, base_url, model, text, [], temperature=0.0)
-                full_rec = await _resolve_single_llm(
-                    text=text,
-                    context_items=ctx,
-                    context_summary=f"{len(ctx)} context(s)" if ctx else "No context",
-                    api_key=api_key,
-                    base_url=base_url,
-                    model=model,
-                    detected_types=detected_types,
-                    confidence_penalty=conf_penalty,
-                    strong_spacy_types=strong_spacy,
-                )
+            for attempt in range(2):
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        alone_res = await _call_llm_once(client, api_key, base_url, model, text, [], temperature=0.0)
+                    full_rec = await _resolve_single_llm(
+                        text=text,
+                        context_items=ctx,
+                        context_summary=f"{len(ctx)} context(s)" if ctx else "No context",
+                        api_key=api_key,
+                        base_url=base_url,
+                        model=model,
+                        n_samples=3,
+                        detected_types=detected_types,
+                        confidence_penalty=conf_penalty,
+                        strong_spacy_types=strong_spacy,
+                    )
+                    break
+                except Exception:
+                    if attempt == 0:
+                        await asyncio.sleep(1.5)
+                    continue
+            if full_rec is not None:
                 break
-            except Exception:
-                continue
 
     if full_rec is None:
         alone_mock = _resolve_single_mock(text, [], "No context (plain LLM)")
@@ -374,7 +380,7 @@ async def run_evaluation_async(
         dataset = dataset[:max_rows]
 
     providers = _get_llm_providers()
-    sem = asyncio.Semaphore(4)
+    sem = asyncio.Semaphore(2)
 
     mfs_items: list[dict[str, Any]] = []
     for row in dataset:

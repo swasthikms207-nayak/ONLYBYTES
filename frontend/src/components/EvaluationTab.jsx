@@ -144,32 +144,202 @@ function FailureCases({ failures }) {
   );
 }
 
-const EVAL_CACHE_KEY = "ambiguity_resolver_eval_cache_v2";
+const EVAL_CACHE_KEY = "ambiguity_resolver_eval_cache_v4";
 let memoryEvalCache = null;
 
-export default function EvaluationTab({ clarificationScore = null }) {
-  const [data, setData] = useState(() => {
-    if (memoryEvalCache) return memoryEvalCache;
-    try {
-      const saved = sessionStorage.getItem(EVAL_CACHE_KEY);
-      if (saved) {
-        memoryEvalCache = JSON.parse(saved);
-        return memoryEvalCache;
+function clearPreviousEvalCache() {
+  memoryEvalCache = null;
+  try {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith("ambiguity_resolver_eval_cache")) {
+        sessionStorage.removeItem(k);
       }
-    } catch {}
-    return null;
-  });
+    }
+  } catch {}
+}
+
+function UploadedEvaluationView({ results, sourceName }) {
+  const [downloading, setDownloading] = useState(false);
+  const total = results.length;
+  const conflictCount = results.filter((r) => Boolean(r.conflict)).length;
+  const ambCount = results.filter((r) => r.ambiguity_type !== "none" && !r.conflict).length;
+  const unambCount = results.filter((r) => r.ambiguity_type === "none" && !r.conflict).length;
+  const autoCount = results.filter((r) => r.status === "AUTO_ACCEPT").length;
+  const altCount = results.filter((r) => r.status === "ACCEPT_WITH_ALTERNATIVES").length;
+  const reviewCount = results.filter((r) => r.status === "REVIEW").length;
+  const clarifiedCount = results.filter((r) => Boolean(r.clarified_by_user)).length;
+  const avgConf = total ? results.reduce((s, r) => s + (Number(r.confidence) || 0), 0) / total : 0;
+
+  const summaryCards = [
+    { label: "Total Sentences", value: String(total), color: FINAL_SYSTEM.color },
+    { label: "Ambiguous", value: String(ambCount), color: "#c2410c" },
+    { label: "Context-Conflict", value: String(conflictCount), color: "#b91c1c" },
+    { label: "Unambiguous", value: String(unambCount), color: "#15803d" },
+    { label: "Avg Confidence", value: fmt(avgConf), color: "#4338ca" },
+    { label: "Auto-Accept", value: `${Math.round((autoCount / (total || 1)) * 100)}%`, color: "#15803d" },
+  ];
+
+  const typeStats = TYPES.map((t) => {
+    const items = results.filter((r) => r.ambiguity_type === t);
+    const count = items.length;
+    const avg = count ? items.reduce((s, r) => s + (Number(r.confidence) || 0), 0) / count : null;
+    const conflicts = items.filter((r) => r.conflict).length;
+    return { type: t, count, share: total ? count / total : 0, avg, conflicts };
+  }).filter((row) => row.count > 0);
+
+  async function downloadReport() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch("/export/resolved.pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ results }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "evaluation_report.pdf";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+      <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800 }}>
+            Final Evaluation Result — {total} sentence{total === 1 ? "" : "s"} ({sourceName})
+          </h2>
+          <p style={{ margin: "0.2rem 0 0", color: "var(--muted)", fontSize: "0.88rem" }}>
+            {FINAL_SYSTEM.label} · Ambiguous: {ambCount} · Context-conflicting: {conflictCount} · Unambiguous: {unambCount}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={downloadReport}
+            disabled={downloading}
+          >
+            {downloading ? "Generating PDF…" : "Download Report"}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: "0.75rem" }}>
+        {summaryCards.map((c) => (
+          <div className="summary-card" key={c.label}>
+            <span className="summary-value" style={{ color: c.color }}>{c.value}</span>
+            <span className="summary-label">{c.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        <p className="col-title" style={{ marginBottom: "0.75rem", color: FINAL_SYSTEM.color }}>
+          Final Metrics Breakdown
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+          <Bar label="Auto-Accept" value={autoCount / (total || 1)} color="#15803d" />
+          <Bar label="Alternatives" value={altCount / (total || 1)} color="#b45309" />
+          <Bar label="Review" value={reviewCount / (total || 1)} color="#b91c1c" />
+          <Bar label="Conflicts" value={conflictCount / (total || 1)} color="#b91c1c" />
+          <Bar label="Clarified" value={clarifiedCount / (total || 1)} color="#0369a1" />
+          <Bar label="Avg Conf" value={avgConf} color={FINAL_SYSTEM.color} />
+        </div>
+      </div>
+
+      <div className="card">
+        <p className="col-title" style={{ marginBottom: "0.75rem" }}>Per-type breakdown</p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.84rem" }}>
+            <thead>
+              <tr>
+                <th style={TH}>Type</th>
+                <th style={TH}>Count</th>
+                <th style={TH}>Share</th>
+                <th style={TH}>Conflicts</th>
+                <th style={{ ...TH, color: FINAL_SYSTEM.color }}>Avg Conf</th>
+              </tr>
+            </thead>
+            <tbody>
+              {typeStats.map((row) => (
+                <tr key={row.type} style={{ borderBottom: "1px solid var(--bg3)" }}>
+                  <td style={TD}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: TYPE_COLORS[row.type], display: "inline-block", flexShrink: 0 }} />
+                      <span>{row.type}</span>
+                    </div>
+                  </td>
+                  <td style={TD}>{row.count}</td>
+                  <td style={TD}>{`${(row.share * 100).toFixed(1)}%`}</td>
+                  <td style={TD}>{row.conflicts}</td>
+                  <td style={{ ...TD, fontWeight: 700, color: FINAL_SYSTEM.color }}>{fmt(row.avg)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card">
+        <p className="col-title" style={{ marginBottom: "0.75rem", color: FINAL_SYSTEM.color }}>
+          Sentence Evaluation Results ({total})
+        </p>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+            <thead>
+              <tr>
+                {["#", "Input Text", "Category", "Type", "Top Reading", "Conf", "Status"].map((h) => (
+                  <th key={h} style={TH}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((r, i) => {
+                const cat = r.conflict ? "context_conflicting" : r.ambiguity_type === "none" ? "unambiguous" : "ambiguous";
+                return (
+                  <tr key={r.id || i} style={{ borderBottom: "1px solid var(--bg3)" }}>
+                    <td style={TD}>{i + 1}</td>
+                    <td style={{ ...TD, maxWidth: 220 }}>{r.text}</td>
+                    <td style={{ ...TD, color: cat === "context_conflicting" ? "#b45309" : "var(--muted)" }}>{cat}</td>
+                    <td style={{ ...TD, color: TYPE_COLORS[r.ambiguity_type] || "var(--muted)", fontWeight: 600 }}>{r.ambiguity_type}</td>
+                    <td style={{ ...TD, maxWidth: 240 }}>{r.clarified_by_user ? (r.resolved_text || r.top_reading) : r.top_reading}</td>
+                    <td style={TD}>{`${Math.round((Number(r.confidence) || 0) * 100)}%`}</td>
+                    <td style={TD}>{r.status}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function EvaluationTab({ results = [], sourceName = "Uploaded Dataset", clarificationScore = null }) {
+  const hasCurrent = Array.isArray(results) && results.length > 0;
+  const [data, setData] = useState(() => memoryEvalCache);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function runEval(forceRefresh = false) {
+  function runEval(forceRefresh = true) {
     if (!forceRefresh && memoryEvalCache) {
       setData(memoryEvalCache);
       return;
     }
+    clearPreviousEvalCache();
+    setData(null);
     setLoading(true);
     setError("");
-    fetch(forceRefresh ? "/evaluate?refresh=true" : "/evaluate")
+    fetch("/evaluate?refresh=true")
       .then((r) => { if (!r.ok) throw new Error("Evaluation failed"); return r.json(); })
       .then((d) => {
         memoryEvalCache = d;
@@ -181,8 +351,18 @@ export default function EvaluationTab({ clarificationScore = null }) {
   }
 
   useEffect(() => {
-    if (!data) runEval(false);
-  }, []);
+    if (hasCurrent) {
+      clearPreviousEvalCache();
+      return;
+    }
+    if (!memoryEvalCache) {
+      runEval(true);
+    }
+  }, [hasCurrent]);
+
+  if (hasCurrent) {
+    return <UploadedEvaluationView results={results} sourceName={sourceName} />;
+  }
 
   if (loading) return (
     <div className="card" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "2rem" }}>

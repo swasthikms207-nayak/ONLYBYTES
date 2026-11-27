@@ -340,7 +340,9 @@ async function exportPDF(data) {
 /* ── Main App ────────────────────────────────────────────────────── */
 export default function App() {
   const [page, setPage] = useState("upload"); // "upload" | "resolver" | "evaluation"
+  const [inputMode, setInputMode] = useState("file"); // "file" | "text"
   const [selectedFile, setSelectedFile] = useState(null);
+  const [promptText, setPromptText] = useState("");
   const [results, setResults] = useState([]);
   const [undoMap, setUndoMap] = useState({});
   const [skippedIds, setSkippedIds] = useState({});
@@ -361,18 +363,32 @@ export default function App() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!selectedFile || loading) return;
+    if (loading) return;
+    if (inputMode === "file" && !selectedFile) return;
+    if (inputMode === "text" && !promptText.trim()) return;
     setLoading(true);
     setError("");
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      const res = await fetch("/process/file", {
-        method: "POST",
-        body: formData,
-      });
+      let res;
+      if (inputMode === "file") {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        res = await fetch("/process/file", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        res = await fetch("/process", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            raw_text: promptText.trim(),
+            format: "text",
+          }),
+        });
+      }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to process file");
+      if (!res.ok) throw new Error(data.detail || "Failed to process input");
       const processed = data.results || [];
       setResults(processed);
       setUndoMap({});
@@ -468,49 +484,91 @@ export default function App() {
       {page === "upload" ? (
         <section style={{ maxWidth: 520, width: "100%", margin: "3rem auto 0" }}>
           <div className="card left-panel">
-            <p className="panel-title">Upload Dataset</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+              <p className="panel-title">Evaluate Input</p>
+              <div className="toggle-group" style={{ minWidth: 210 }}>
+                <button
+                  type="button"
+                  className={`toggle-btn ${inputMode === "file" ? "active" : ""}`}
+                  onClick={() => { setInputMode("file"); setError(""); }}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-btn ${inputMode === "text" ? "active" : ""}`}
+                  onClick={() => { setInputMode("text"); setError(""); }}
+                >
+                  Write Prompt
+                </button>
+              </div>
+            </div>
             <form onSubmit={handleSubmit} className="input-form">
-              <label className="field-label">
-                Select file <span className="field-hint">(.csv, .json, .jsonl, .xlsx, .parquet)</span>
-              </label>
-              <label
-                className="ghost-btn"
-                style={{
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: "2rem 1rem",
-                  borderStyle: "dashed",
-                  textAlign: "center",
-                  gap: "0.4rem",
-                }}
-              >
-                <span style={{ fontSize: "1.5rem" }}>📁</span>
-                <span>{selectedFile ? selectedFile.name : "Choose dataset file…"}</span>
-                <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 400 }}>
-                  {selectedFile
-                    ? `${(selectedFile.size / 1024).toFixed(1)} KB`
-                    : "Supports CSV, JSON, JSONL, XLSX, Parquet"}
-                </span>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv,.json,.jsonl,.xlsx,.parquet"
-                  onChange={handleFileUpload}
-                  hidden
-                />
-              </label>
+              {inputMode === "file" ? (
+                <>
+                  <label className="field-label">
+                    Select file <span className="field-hint">(.csv, .json, .jsonl, .xlsx, .parquet)</span>
+                  </label>
+                  <label
+                    className="ghost-btn"
+                    style={{
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "2rem 1rem",
+                      borderStyle: "dashed",
+                      textAlign: "center",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    <span style={{ fontSize: "1.5rem" }}>📁</span>
+                    <span>{selectedFile ? selectedFile.name : "Choose dataset file…"}</span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 400 }}>
+                      {selectedFile
+                        ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                        : "Supports CSV, JSON, JSONL, XLSX, Parquet"}
+                    </span>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept=".csv,.json,.jsonl,.xlsx,.parquet"
+                      onChange={handleFileUpload}
+                      hidden
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="field-label" htmlFor="prompt-input">
+                    Enter prompt <span className="field-hint">(single sentence or one per line)</span>
+                  </label>
+                  <textarea
+                    id="prompt-input"
+                    rows={5}
+                    placeholder="e.g. I saw the man with the telescope."
+                    value={promptText}
+                    onChange={(e) => { setPromptText(e.target.value); setError(""); }}
+                  />
+                </>
+              )}
 
               {error && <span className="error-text">{error}</span>}
 
               <div className="btn-row">
-                <button type="submit" className="primary-btn" style={{ width: "100%", padding: "0.65rem" }} disabled={loading || !selectedFile}>
+                <button
+                  type="submit"
+                  className="primary-btn"
+                  style={{ width: "100%", padding: "0.65rem" }}
+                  disabled={loading || (inputMode === "file" ? !selectedFile : !promptText.trim())}
+                >
                   {loading ? (
-                    <span className="spinner-row" style={{ justifyContent: "center" }}><span className="spinner" /> Processing dataset…</span>
+                    <span className="spinner-row" style={{ justifyContent: "center" }}>
+                      <span className="spinner" /> {inputMode === "file" ? "Processing dataset…" : "Evaluating prompt…"}
+                    </span>
                   ) : (
-                    "Process Dataset"
+                    inputMode === "file" ? "Process Dataset" : "Evaluate Prompt"
                   )}
                 </button>
               </div>
@@ -518,7 +576,10 @@ export default function App() {
           </div>
         </section>
       ) : page === "evaluation" ? (
-        <EvaluationTab />
+        <EvaluationTab
+          results={results}
+          sourceName={inputMode === "file" ? (selectedFile?.name || "Uploaded Dataset") : "Prompt Input"}
+        />
       ) : (
         <div className="main-area">
           {/* Summary cards + donut */}
