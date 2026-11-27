@@ -255,5 +255,31 @@
         ]
       }
     }
+  },
+  "checks": {
+    "steering_control": {
+      "num_queries": 10,
+      "mean_similarity_by_alpha": {
+        "0.0": 0.5639,
+        "0.25": 0.6379,
+        "0.5": 0.6767,
+        "0.75": 0.6908,
+        "1.0": 0.691
+      },
+      "similarity_gain": 0.1271,
+      "correlation": 0.3077
+    },
+    "quality_preserved": {
+      "held_out_size": 20,
+      "alpha": 0.5,
+      "accuracy_before": 0.55,
+      "accuracy_after": 1.0,
+      "accuracy_delta": 0.45
+    },
+    "visualizer_faithfulness": {
+      "num_points": 120,
+      "n_neighbors": 5,
+      "trustworthiness": 0.7837
+    }
   }
 }

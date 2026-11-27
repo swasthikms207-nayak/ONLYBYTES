@@ -10,14 +10,19 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.manifold import trustworthiness
 
 from decision_engine import decide_action
 from intent_classifier import classify_intent
 from intent_embeddings import (
+    _l2_normalize,
     compute_ambiguity_score,
+    compute_and_cache_centroids,
     compute_similarity_margin,
+    get_model,
     query_centroid_similarities,
 )
+from intent_map import fit_or_load_projection
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 TEST_CSV = DATA_DIR / "test_queries.csv"
@@ -289,6 +294,11 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
             "inter_annotator_agreement": round(annotator_agree, 4),
         },
         "systems": system_results,
+        "checks": {
+            "steering_control": check_steering_control(rows),
+            "quality_preserved": check_quality_preserved(rows),
+            "visualizer_faithfulness": check_visualizer_faithfulness(),
+        },
     }
 
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -298,6 +308,110 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
 
     save_calibration_plot(system_results["risk_aware_margin"]["calibration_bins"])
     return results
+
+
+def check_steering_control(
+    rows: list[dict[str, str]],
+    alphas: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0),
+) -> dict[str, Any]:
+    """Sweep alpha from 0 to 1 and measure target intent similarity change and correlation."""
+    centroids = compute_and_cache_centroids()
+    model = get_model()
+    sample = rows[:10]
+    all_alphas: list[float] = []
+    all_sims: list[float] = []
+    per_alpha: dict[str, list[float]] = {str(a): [] for a in alphas}
+
+    for row in sample:
+        target = row["correct_intent"].strip()
+        alt = row["annotator2_label"].strip()
+        source = alt if alt != target else ("order_status" if target != "order_status" else "card_block")
+        vec_before = _l2_normalize(
+            np.asarray(model.encode([row["query"]], normalize_embeddings=True)[0], dtype=np.float32)
+        )
+        delta = centroids[target] - centroids[source]
+        for a in alphas:
+            vec_after = _l2_normalize(vec_before + float(a) * delta)
+            sim = float(np.dot(vec_after, centroids[target]))
+            all_alphas.append(float(a))
+            all_sims.append(sim)
+            per_alpha[str(a)].append(sim)
+
+    mean_by_alpha = {
+        k: round(float(np.mean(v)), 4) if v else 0.0 for k, v in per_alpha.items()
+    }
+    corr = float(np.corrcoef(all_alphas, all_sims)[0, 1]) if len(all_alphas) > 1 else 0.0
+    if np.isnan(corr):
+        corr = 0.0
+
+    return {
+        "num_queries": len(sample),
+        "mean_similarity_by_alpha": mean_by_alpha,
+        "similarity_gain": round(
+            mean_by_alpha[str(alphas[-1])] - mean_by_alpha[str(alphas[0])], 4
+        ),
+        "correlation": round(corr, 4),
+    }
+
+
+def check_quality_preserved(
+    rows: list[dict[str, str]],
+    alpha: float = 0.5,
+) -> dict[str, Any]:
+    """Compare intent classification accuracy on a held-out set before and after steering."""
+    held_out = rows[-20:] if len(rows) >= 20 else rows
+    centroids = compute_and_cache_centroids()
+    intent_names = list(centroids.keys())
+    model = get_model()
+
+    correct_before = 0
+    correct_after = 0
+    for row in held_out:
+        target = row["correct_intent"].strip()
+        vec_before = _l2_normalize(
+            np.asarray(model.encode([row["query"]], normalize_embeddings=True)[0], dtype=np.float32)
+        )
+        pred_before = max(intent_names, key=lambda name: float(np.dot(vec_before, centroids[name])))
+        if pred_before == target:
+            correct_before += 1
+
+        source = pred_before if pred_before != target else (
+            "order_status" if target != "order_status" else "card_block"
+        )
+        vec_after = _l2_normalize(vec_before + alpha * (centroids[target] - centroids[source]))
+        pred_after = max(intent_names, key=lambda name: float(np.dot(vec_after, centroids[name])))
+        if pred_after == target:
+            correct_after += 1
+
+    n = len(held_out) or 1
+    acc_before = round(correct_before / n, 4)
+    acc_after = round(correct_after / n, 4)
+    return {
+        "held_out_size": len(held_out),
+        "alpha": alpha,
+        "accuracy_before": acc_before,
+        "accuracy_after": acc_after,
+        "accuracy_delta": round(acc_after - acc_before, 4),
+    }
+
+
+def check_visualizer_faithfulness() -> dict[str, Any]:
+    """Compute trustworthiness between 2D PCA projection and original high-dimensional embeddings."""
+    projection = fit_or_load_projection()
+    points = projection.get("points", [])
+    texts = [p["text"] for p in points]
+    coords_2d = np.array([[p["x"], p["y"]] for p in points], dtype=np.float64)
+
+    model = get_model()
+    embeddings = np.asarray(model.encode(texts, normalize_embeddings=True), dtype=np.float64)
+
+    k5 = min(5, max(1, len(points) // 2 - 1))
+    trust_k5 = float(trustworthiness(embeddings, coords_2d, n_neighbors=k5))
+    return {
+        "num_points": len(points),
+        "n_neighbors": k5,
+        "trustworthiness": round(trust_k5, 4),
+    }
 
 
 def main() -> None:

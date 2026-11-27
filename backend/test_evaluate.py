@@ -1,8 +1,18 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
-from evaluate import compute_ece, evaluate_system, save_calibration_plot
+import numpy as np
+
+from evaluate import (
+    check_quality_preserved,
+    check_steering_control,
+    check_visualizer_faithfulness,
+    compute_ece,
+    evaluate_system,
+    save_calibration_plot,
+)
 
 
 class TestEvaluate(unittest.TestCase):
@@ -75,6 +85,51 @@ class TestEvaluate(unittest.TestCase):
             plot_path = Path(tmpdir) / "cal.png"
             save_calibration_plot(cal, output_path=plot_path)
             self.assertTrue(plot_path.exists())
+
+    def test_three_evaluation_checks(self):
+        fake_centroids = {
+            "card_block": np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
+            "order_status": np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32),
+            "account_closure": np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32),
+        }
+        fake_model = MagicMock()
+        fake_model.encode.side_effect = lambda texts, normalize_embeddings=True: np.tile(
+            np.array([[0.2, 0.2, 0.8, 0.1]], dtype=np.float32), (len(texts), 1)
+        )
+        rows = [
+            {
+                "query": "Sab band karo",
+                "correct_intent": "card_block",
+                "annotator2_label": "account_closure",
+            }
+        ]
+        fake_proj = {
+            "points": [
+                {"text": f"t{i}", "x": float(i), "y": float(i * 0.5)}
+                for i in range(12)
+            ]
+        }
+        fake_model_vis = MagicMock()
+        fake_model_vis.encode.return_value = np.array(
+            [[float(i), float(i * 0.5), 0.0, 0.0] for i in range(12)],
+            dtype=np.float64,
+        )
+
+        with patch("evaluate.compute_and_cache_centroids", return_value=fake_centroids), patch(
+            "evaluate.get_model", return_value=fake_model
+        ):
+            steer_res = check_steering_control(rows)
+            self.assertGreater(steer_res["similarity_gain"], 0.0)
+            self.assertGreater(steer_res["correlation"], 0.9)
+
+            qual_res = check_quality_preserved(rows)
+            self.assertGreaterEqual(qual_res["accuracy_after"], qual_res["accuracy_before"])
+
+        with patch("evaluate.fit_or_load_projection", return_value=fake_proj), patch(
+            "evaluate.get_model", return_value=fake_model_vis
+        ):
+            vis_res = check_visualizer_faithfulness()
+            self.assertGreaterEqual(vis_res["trustworthiness"], 0.9)
 
 
 if __name__ == "__main__":
