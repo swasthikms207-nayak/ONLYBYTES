@@ -85,6 +85,44 @@ class TestIntentMap(unittest.TestCase):
         self.assertIsNotNone(body["query_before"])
         self.assertIsNotNone(body["query_after"])
 
+    def test_steer_and_corrections_endpoints(self):
+        client = TestClient(app)
+        mock_steer = {
+            "query": "Sab band karo",
+            "source_intent": "account_closure",
+            "target_intent": "card_block",
+            "alpha": 0.5,
+            "old_point": {"x": 0.1, "y": 0.2},
+            "new_point": {"x": 0.3, "y": 0.1},
+            "probabilities": [
+                {"intent": "card_block", "probability": 0.7},
+                {"intent": "account_closure", "probability": 0.3},
+            ],
+        }
+        with patch("main.steer_query", return_value=mock_steer):
+            steer_res = client.post(
+                "/steer",
+                json={
+                    "query": "Sab band karo",
+                    "source_intent": "account_closure",
+                    "target_intent": "card_block",
+                    "alpha": 0.5,
+                },
+            )
+        self.assertEqual(steer_res.status_code, 200)
+        self.assertEqual(steer_res.json()["new_point"], {"x": 0.3, "y": 0.1})
+
+        corr_res = client.post(
+            "/corrections",
+            json={
+                "query": "Sab band karo",
+                "target_intent": "card_block",
+                "alpha": 0.5,
+            },
+        )
+        self.assertEqual(corr_res.status_code, 200)
+        self.assertGreaterEqual(corr_res.json()["count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

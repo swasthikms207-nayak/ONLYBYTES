@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SemanticMap from "./components/SemanticMap.jsx";
 
 const PRESETS = [
   {
@@ -300,6 +301,11 @@ export default function App() {
           )}
         </section>
       </div>
+
+      <SemanticMap
+        currentQuery={lastQuery}
+        candidates={decisionData?.candidates || []}
+      />
     </div>
   );
 }

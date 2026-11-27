@@ -5,7 +5,14 @@ from typing import Any, Optional
 import numpy as np
 from sklearn.decomposition import PCA
 
-from intent_embeddings import DATA_DIR, INTENTS_FILE, MODEL_NAME, get_model
+from intent_embeddings import (
+    DATA_DIR,
+    INTENTS_FILE,
+    MODEL_NAME,
+    _l2_normalize,
+    compute_and_cache_centroids,
+    get_model,
+)
 
 MAP_CACHE_FILE = DATA_DIR / "intent_map_pca.json"
 
@@ -142,4 +149,63 @@ def get_map_data(
         "points": projection["points"],
         "query_before": query_before,
         "query_after": query_after,
+    }
+
+
+def steer_query(
+    query: str,
+    source_intent: str,
+    target_intent: str,
+    alpha: float,
+    intents_path: Path = INTENTS_FILE,
+    cache_path: Path = MAP_CACHE_FILE,
+) -> dict[str, Any]:
+    """Steer a query embedding from source_intent toward target_intent by alpha and return 2D points + probabilities."""
+    if not query or not query.strip():
+        raise ValueError("query must be non-empty")
+
+    centroids = compute_and_cache_centroids(intents_path=intents_path)
+    if source_intent not in centroids:
+        raise ValueError(f"Unknown source_intent: {source_intent}")
+    if target_intent not in centroids:
+        raise ValueError(f"Unknown target_intent: {target_intent}")
+
+    projection = fit_or_load_projection(intents_path=intents_path, cache_path=cache_path)
+    mean = np.asarray(projection["mean"], dtype=np.float32)
+    components = np.asarray(projection["components"], dtype=np.float32)
+
+    model = get_model()
+    vec_before = _l2_normalize(
+        np.asarray(model.encode([query.strip()], normalize_embeddings=True)[0], dtype=np.float32)
+    )
+    delta = centroids[target_intent] - centroids[source_intent]
+    vec_after = _l2_normalize(vec_before + float(alpha) * delta)
+
+    xy_before = _project_array(vec_before, mean, components)
+    xy_after = _project_array(vec_after, mean, components)
+
+    # Softmax over cosine similarities (temperature=10) for updated intent probabilities
+    intent_names = list(centroids.keys())
+    sims = np.array([float(np.dot(vec_after, centroids[name])) for name in intent_names])
+    scaled = sims * 10.0
+    exp_scores = np.exp(scaled - np.max(scaled))
+    probs = exp_scores / np.sum(exp_scores)
+
+    probabilities = sorted(
+        [
+            {"intent": name, "probability": round(float(prob), 4)}
+            for name, prob in zip(intent_names, probs)
+        ],
+        key=lambda item: item["probability"],
+        reverse=True,
+    )
+
+    return {
+        "query": query.strip(),
+        "source_intent": source_intent,
+        "target_intent": target_intent,
+        "alpha": float(alpha),
+        "old_point": {"x": round(float(xy_before[0]), 4), "y": round(float(xy_before[1]), 4)},
+        "new_point": {"x": round(float(xy_after[0]), 4), "y": round(float(xy_after[1]), 4)},
+        "probabilities": probabilities,
     }

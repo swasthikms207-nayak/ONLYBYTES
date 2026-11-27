@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
 from intent_embeddings import compute_ambiguity_score, compute_similarity_margin
-from intent_map import get_map_data
+from intent_map import get_map_data, steer_query
 
 # Load environment variables from root .env (fallback to backend/.env)
 ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
@@ -23,6 +23,7 @@ POLICY_FILE = Path(__file__).resolve().parent / "data" / "policy.json"
 CUSTOMERS_FILE = Path(__file__).resolve().parent / "data" / "mock_customers.json"
 
 decisions_log: list[Dict[str, Any]] = []
+corrections_log: list[Dict[str, Any]] = []
 
 LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -79,6 +80,20 @@ class DecideEndpointRequest(BaseModel):
     customer_id: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
     clarification_choice: Optional[str] = None
+
+
+class SteerRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    source_intent: str = Field(..., min_length=1)
+    target_intent: str = Field(..., min_length=1)
+    alpha: float = Field(default=0.5, ge=-1.0, le=2.0)
+
+
+class CorrectionRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    target_intent: str = Field(..., min_length=1)
+    alpha: float = Field(..., ge=-1.0, le=2.0)
+    source_intent: Optional[str] = None
 
 
 def load_customer(customer_id: str) -> Dict[str, Any]:
@@ -302,6 +317,40 @@ def get_customers():
         return {"customers": []}
     with CUSTOMERS_FILE.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+@app.post("/steer")
+def steer(request: SteerRequest):
+    """Steer a query embedding from source_intent toward target_intent and return 2D coords + probabilities."""
+    try:
+        return steer_query(
+            query=request.query,
+            source_intent=request.source_intent,
+            target_intent=request.target_intent,
+            alpha=request.alpha,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/corrections")
+def save_correction(request: CorrectionRequest):
+    """Store a query steering correction in the corrections list."""
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "query": request.query,
+        "source_intent": request.source_intent,
+        "target_intent": request.target_intent,
+        "alpha": request.alpha,
+    }
+    corrections_log.append(entry)
+    return {"saved": entry, "count": len(corrections_log)}
+
+
+@app.get("/corrections")
+def get_corrections():
+    """Return all saved steering corrections."""
+    return {"corrections": corrections_log}
 
 
 @app.get("/map")
