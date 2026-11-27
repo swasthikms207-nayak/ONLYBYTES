@@ -429,3 +429,101 @@ button:disabled {
   justify-content: space-between;
   font-size: 0.8rem;
 }
+
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  background: #18181b;
+  border: 1px solid #27272a;
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.tab-btn {
+  background: transparent;
+  color: #a1a1aa;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+.policy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.policy-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.error-text {
+  font-size: 0.85rem;
+  color: var(--risk-high);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.policy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.policy-table th,
+.policy-table td {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #27272a;
+}
+
+.policy-table th {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.intent-cell {
+  font-weight: 600;
+}
+
+.policy-table select,
+.policy-table input {
+  background: #09090b;
+  color: #f4f4f5;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+}
+
+.risk-select.risk-low {
+  color: var(--risk-low);
+  border-color: var(--risk-low);
+}
+
+.risk-select.risk-medium {
+  color: var(--risk-medium);
+  border-color: var(--risk-medium);
+}
+
+.risk-select.risk-high {
+  color: var(--risk-high);
+  border-color: var(--risk-high);
+}

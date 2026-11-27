@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PolicyPage from "./components/PolicyPage.jsx";
 import SemanticMap from "./components/SemanticMap.jsx";
 
 const PRESETS = [
@@ -35,6 +36,7 @@ const RISK_CLASS = {
 };
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState("live");
   const [customers, setCustomers] = useState([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState("CUST_1001");
   const [messages, setMessages] = useState([]);
@@ -147,24 +149,49 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <div>
-          <h1>ONLYBYTES Live</h1>
+          <h1>ONLYBYTES</h1>
           <p className="subtitle">Bilingual Intent Ambiguity &amp; Risk-Aware Decision Engine</p>
         </div>
-        <div className="customer-picker">
-          <label htmlFor="customer-select">Customer</label>
-          <select
-            id="customer-select"
-            value={selectedCustomerId}
-            onChange={(e) => handleCustomerChange(e.target.value)}
+
+        <nav className="tabs">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === "live" ? "active" : ""}`}
+            onClick={() => setActiveTab("live")}
           >
-            {customers.map((c) => (
-              <option key={c.customer_id} value={c.customer_id}>
-                {c.name} ({c.customer_id})
-              </option>
-            ))}
-          </select>
-        </div>
+            Live
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === "policy" ? "active" : ""}`}
+            onClick={() => setActiveTab("policy")}
+          >
+            Policy
+          </button>
+        </nav>
+
+        {activeTab === "live" && (
+          <div className="customer-picker">
+            <label htmlFor="customer-select">Customer</label>
+            <select
+              id="customer-select"
+              value={selectedCustomerId}
+              onChange={(e) => handleCustomerChange(e.target.value)}
+            >
+              {customers.map((c) => (
+                <option key={c.customer_id} value={c.customer_id}>
+                  {c.name} ({c.customer_id})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </header>
+
+      {activeTab === "policy" ? (
+        <PolicyPage />
+      ) : (
+        <>
 
       <div className="live-grid">
         {/* Left Column: Customer Chat */}
@@ -306,6 +333,8 @@ export default function App() {
         currentQuery={lastQuery}
         candidates={decisionData?.candidates || []}
       />
+        </>
+      )}
     </div>
   );
 }
