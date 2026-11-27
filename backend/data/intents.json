@@ -1,0 +1,172 @@
+{
+  "intents": [
+    {
+      "intent": "payment_reversal",
+      "description": "Requests to reverse a duplicate, failed, or erroneous payment.",
+      "examples": [
+        "I was charged twice for my order, please reverse one payment",
+        "Reverse my recent UPI transaction",
+        "Money got debited but payment failed",
+        "Please initiate a payment reversal for TXN9042",
+        "Duplicate charge happened on my card",
+        "Amount deducted twice, need reversal",
+        "Cancel and reverse the pending payment",
+        "Wrong amount was debited from my wallet",
+        "How do I get a failed payment reversed?",
+        "Payment stuck in processing, reverse it",
+        "Mera paisa do baar kat gaya hai, reverse karo",
+        "Payment fail ho gaya par account se paise cut gaye",
+        "UPI payment reverse karwana hai jaldi",
+        "Galti se double payment ho gaya, wapas chahiye",
+        "Bhai payment atak gaya hai, reversal kab milega?"
+      ]
+    },
+    {
+      "intent": "cancel_order",
+      "description": "Requests to cancel an existing or pending e-commerce order.",
+      "examples": [
+        "Cancel my order right now",
+        "I want to cancel order ORD1023",
+        "Please stop shipment for my latest purchase",
+        "Ordered the wrong size, cancel it",
+        "Can I still cancel my pending order?",
+        "Cancel my headphones order before dispatch",
+        "I no longer need this item, cancel order",
+        "How do I cancel an order I just placed?",
+        "Abort my current order immediately",
+        "Cancel all items in my last order",
+        "Mera order cancel kar do please",
+        "Galti se order place ho gaya, cancel karna hai",
+        "Abhi order dispatch nahi hua, cancel ho sakta hai?",
+        "Mujhe ye product nahi chahiye, order cancel karo",
+        "Order cancel karne ka option nahi dikh raha"
+      ]
+    },
+    {
+      "intent": "refund_status",
+      "description": "Inquiries about the status or timeline of an initiated refund.",
+      "examples": [
+        "Where is my refund?",
+        "Check refund status for order ORD1015",
+        "How long does a refund take to credit?",
+        "My refund was approved last week, still not received",
+        "Track my pending refund",
+        "Has my refund been processed yet?",
+        "When will the money reach my bank account?",
+        "Show me the ARN for my card refund",
+        "Refund status still shows pending",
+        "Why is my refund taking so long?",
+        "Mera refund abhi tak nahi aaya",
+        "Refund kab tak account mein credit hoga?",
+        "Cancelled order ka paisa abhi tak wapas nahi mila",
+        "Refund status check karke batao please",
+        "Kitne din lagenge refund aane mein?"
+      ]
+    },
+    {
+      "intent": "account_closure",
+      "description": "Requests to permanently close, deactivate, or delete a user account.",
+      "examples": [
+        "I want to close my account",
+        "Delete my profile and personal data",
+        "How do I permanently deactivate my account?",
+        "Close my wallet account immediately",
+        "I no longer want to use this service, close account",
+        "Please process my account closure request",
+        "Deactivate my login credentials",
+        "What is the procedure to close my account?",
+        "Terminate my account after settling pending dues",
+        "Remove my account from your platform",
+        "Mujhe apna account permanently band karna hai",
+        "Account delete kaise karte hain?",
+        "Mera account close kar do, ab use nahi karna",
+        "Account deactivate karne ke liye kya karna hoga?",
+        "Please mera profile aur data delete kar do"
+      ]
+    },
+    {
+      "intent": "change_address",
+      "description": "Requests to update the delivery or billing address.",
+      "examples": [
+        "Change my delivery address",
+        "Update shipping address for order ORD1044",
+        "I moved to a new house, update my address",
+        "Can I change the delivery location before dispatch?",
+        "Edit my default billing address",
+        "Deliver my package to my office address instead",
+        "Wrong pin code entered, please fix address",
+        "How do I add a new shipping address?",
+        "Update my saved address details",
+        "Switch delivery address for my pending order",
+        "Mera delivery address change karna hai",
+        "Naya address update kar do please",
+        "Order ka shipping address galat dal gaya, theek karo",
+        "Kya dispatch se pehle address badal sakte hain?",
+        "Ghar ki jagah office address pe deliver karwa do"
+      ]
+    },
+    {
+      "intent": "card_block",
+      "description": "Requests to block, freeze, or hotlist a lost, stolen, or compromised card.",
+      "examples": [
+        "Block my debit card immediately",
+        "I lost my credit card, please freeze it",
+        "My card was stolen, block it now",
+        "Temporarily lock my virtual card",
+        "Hotlist my card ending in 4821",
+        "Suspicious activity on my card, block it",
+        "How do I disable my card right away?",
+        "Freeze my card before any unauthorized charge",
+        "I misplaced my wallet, block my card",
+        "Turn off my credit card permanently",
+        "Mera card kho gaya hai, turant block karo",
+        "Debit card freeze karna hai abhi",
+        "Card chori ho gaya, please block kar do",
+        "Mera card temporarily lock kaise karu?",
+        "Card pe fraud lag raha hai, jaldi band karo"
+      ]
+    },
+    {
+      "intent": "order_status",
+      "description": "Inquiries about the tracking, dispatch, or delivery status of an order.",
+      "examples": [
+        "Where is my order?",
+        "Track my package ORD1088",
+        "When will my order be delivered?",
+        "Has my order been shipped yet?",
+        "Why is my delivery delayed?",
+        "Share the courier tracking link",
+        "My order is stuck in transit",
+        "Check current status of my recent purchase",
+        "Is my package out for delivery today?",
+        "Give me an update on my pending order",
+        "Mera order kahan pahuncha?",
+        "Delivery kab tak aayegi?",
+        "Order abhi tak ship kyun nahi hua?",
+        "Tracking link bhej do please",
+        "Aaj delivery hogi kya mere order ki?"
+      ]
+    },
+    {
+      "intent": "transaction_dispute",
+      "description": "Reports of unauthorized, fraudulent, or unrecognized transactions.",
+      "examples": [
+        "I did not authorize this transaction",
+        "Report an unrecognized charge on my statement",
+        "Someone used my card without permission",
+        "I want to dispute transaction TXN7731",
+        "Fraudulent debit from my account",
+        "I never bought anything from this merchant",
+        "Raise a chargeback for this unknown payment",
+        "Unauthorized UPI debit happened today",
+        "Why was I billed by an unknown vendor?",
+        "File a dispute for a scam transaction",
+        "Ye transaction maine nahi kiya hai",
+        "Mere account se bina permission paise kat gaye",
+        "Fraud transaction report karna hai",
+        "Anjaan merchant ko payment dikh raha hai, dispute karo",
+        "Chargeback raise karna hai is transaction pe"
+      ]
+    }
+  ]
+}
