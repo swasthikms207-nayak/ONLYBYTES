@@ -315,6 +315,13 @@ export default function App() {
                 <p>{decisionData.reason}</p>
               </div>
 
+              {decisionData.context_used && (
+                <div className="reason-box">
+                  <span className="metric-label">Context Used</span>
+                  <p>{decisionData.context_used}</p>
+                </div>
+              )}
+
               <div className="candidates-box">
                 <span className="metric-label">Candidate Intents</span>
                 <div className="candidates-list">

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from context_filter import filter_readings_with_context
 from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
 from intent_embeddings import compute_reading_ambiguity
@@ -247,11 +248,24 @@ async def decide_pipeline(request: DecideEndpointRequest):
             customer_data=customer_data,
             chat_history=chat_history,
         )
+        filtered = filter_readings_with_context(
+            readings=analysis.get("readings", []),
+            customer_data=customer_data,
+            chat_history=chat_history,
+        )
+        if filtered["readings"]:
+            analysis["readings"] = filtered["readings"]
+            analysis["candidate_intents"] = filtered["candidate_intents"]
+        if filtered["resolved_by_context"]:
+            analysis["is_ambiguous"] = False
+            analysis["ambiguity_type"] = "none"
+
         amb_metrics = compute_reading_ambiguity(analysis.get("readings", []))
         decision_res = decide_action(
             analysis=analysis,
             clarification_count=clarification_count,
             ambiguity_score=amb_metrics["score"],
+            resolved_by_context=filtered["resolved_by_context"],
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -290,6 +304,8 @@ async def decide_pipeline(request: DecideEndpointRequest):
         "entropy": amb_metrics["entropy"],
         "divergence": amb_metrics["divergence"],
         "ambiguity_score": amb_metrics["score"],
+        "context_used": filtered["context_used"],
+        "resolved_by_context": filtered["resolved_by_context"],
     }
 
     decisions_log.append(

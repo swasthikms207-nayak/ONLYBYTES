@@ -52,6 +52,7 @@ def decide_action(
     analysis: dict[str, Any],
     clarification_count: int = 0,
     ambiguity_score: Optional[float] = None,
+    resolved_by_context: bool = False,
     policy_path: Path = POLICY_FILE,
 ) -> dict[str, Any]:
     """Decide whether to ACT, ASK, or ESCALATE based on top intent confidence, policy threshold, and ambiguity_score."""
@@ -75,10 +76,13 @@ def decide_action(
     risk_tier = policy["risk_tier"]
 
     high_reading_ambiguity = (
-        ambiguity_score is not None and float(ambiguity_score) >= AMBIGUITY_SCORE_THRESHOLD
+        not resolved_by_context
+        and ambiguity_score is not None
+        and float(ambiguity_score) >= AMBIGUITY_SCORE_THRESHOLD
     )
 
     if top_confidence >= threshold and not high_reading_ambiguity:
+        prefix = "Resolved by customer context: " if resolved_by_context else ""
         return DecisionResult(
             decision="ACT",
             intent=top_intent,
@@ -86,7 +90,7 @@ def decide_action(
             threshold=threshold,
             risk_tier=risk_tier,
             reason=(
-                f"Top intent '{top_intent}' confidence ({top_confidence:.2f}) "
+                f"{prefix}Top intent '{top_intent}' confidence ({top_confidence:.2f}) "
                 f"meets {risk_tier}-risk threshold ({threshold:.2f})."
             ),
         ).model_dump()

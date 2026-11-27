@@ -49,6 +49,7 @@ class TestDecideEndpoint(unittest.TestCase):
         self.assertEqual(body["score"], 0.0)
         self.assertEqual(body["entropy"], 0.0)
         self.assertEqual(body["divergence"], 0.0)
+        self.assertIn("context_used", body)
         self.assertEqual(len(decisions_log), 1)
         self.assertEqual(decisions_log[0]["customer_id"], "CUST_1001")
 
