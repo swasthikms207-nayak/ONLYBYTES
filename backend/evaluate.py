@@ -21,7 +21,7 @@ from intent_embeddings import (
     get_model,
     query_centroid_similarities,
 )
-from intent_map import fit_or_load_projection
+from intent_map import _collect_past_pool, _project_array, fit_or_load_projection
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 TEST_CSV = DATA_DIR / "test_queries.csv"
@@ -496,17 +496,17 @@ def check_quality_preserved(
 def check_visualizer_faithfulness() -> dict[str, Any]:
     """Compute trustworthiness between 2D PCA projection and original high-dimensional embeddings."""
     projection = fit_or_load_projection()
-    points = projection.get("points", [])
-    texts = [p["text"] for p in points]
-    coords_2d = np.array([[p["x"], p["y"]] for p in points], dtype=np.float64)
-
+    texts = _collect_past_pool()
     model = get_model()
     embeddings = np.asarray(model.encode(texts, normalize_embeddings=True), dtype=np.float64)
+    mean = np.asarray(projection["mean"], dtype=np.float64)
+    components = np.asarray(projection["components"], dtype=np.float64)
+    coords_2d = _project_array(embeddings, mean, components)
 
-    k5 = min(5, max(1, len(points) // 2 - 1))
+    k5 = min(5, max(1, len(texts) // 2 - 1))
     trust_k5 = float(trustworthiness(embeddings, coords_2d, n_neighbors=k5))
     return {
-        "num_points": len(points),
+        "num_points": len(texts),
         "n_neighbors": k5,
         "trustworthiness": round(trust_k5, 4),
     }

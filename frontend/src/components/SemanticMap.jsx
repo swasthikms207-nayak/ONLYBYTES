@@ -2,23 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 
 const SVG_W = 520;
 const SVG_H = 260;
-const PAD = 24;
+const PAD = 32;
 
 export default function SemanticMap({ currentQuery, readings }) {
-  const [points, setPoints] = useState([]);
   const [queryPoint, setQueryPoint] = useState(null);
+  const [readingPoints, setReadingPoints] = useState([]);
   const [targetReading, setTargetReading] = useState("");
   const [alpha, setAlpha] = useState(0);
   const [steerResult, setSteerResult] = useState(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    fetch("/map")
-      .then((res) => res.json())
-      .then((data) => setPoints(data.points || []))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     setSteerResult(null);
@@ -27,6 +20,7 @@ export default function SemanticMap({ currentQuery, readings }) {
 
     if (!currentQuery) {
       setQueryPoint(null);
+      setReadingPoints([]);
       setTargetReading("");
       return;
     }
@@ -37,15 +31,23 @@ export default function SemanticMap({ currentQuery, readings }) {
       setTargetReading(currentQuery);
     }
 
-    fetch(`/map?query=${encodeURIComponent(currentQuery)}`)
+    const params = new URLSearchParams({ query: currentQuery });
+    (readings || []).forEach((r) => {
+      if (r.paraphrase) params.append("readings", r.paraphrase);
+    });
+
+    fetch(`/map?${params.toString()}`)
       .then((res) => res.json())
-      .then((data) => setQueryPoint(data.query_before || null))
+      .then((data) => {
+        setQueryPoint(data.query_point || null);
+        setReadingPoints(data.reading_points || []);
+      })
       .catch(() => {});
   }, [currentQuery, readings]);
 
   const bounds = useMemo(() => {
-    const allX = points.map((p) => p.x);
-    const allY = points.map((p) => p.y);
+    const allX = readingPoints.map((p) => p.x);
+    const allY = readingPoints.map((p) => p.y);
     if (queryPoint) {
       allX.push(queryPoint.x);
       allY.push(queryPoint.y);
@@ -67,7 +69,7 @@ export default function SemanticMap({ currentQuery, readings }) {
       minY,
       maxY: maxY === minY ? minY + 1 : maxY,
     };
-  }, [points, queryPoint, steerResult]);
+  }, [readingPoints, queryPoint, steerResult]);
 
   function toSvg(pt) {
     const sx =
@@ -152,19 +154,17 @@ export default function SemanticMap({ currentQuery, readings }) {
           </marker>
         </defs>
 
-        {points.map((pt, idx) => {
+        {readingPoints.map((pt, idx) => {
           const pos = toSvg(pt);
           return (
-            <circle
-              key={idx}
-              cx={pos.x}
-              cy={pos.y}
-              r={3.5}
-              fill={pt.color}
-              opacity={0.7}
-            >
-              <title>{`${pt.intent}: ${pt.text}`}</title>
-            </circle>
+            <g key={idx}>
+              <circle cx={pos.x} cy={pos.y} r={5} fill="#22c55e" opacity={0.85}>
+                <title>{pt.paraphrase}</title>
+              </circle>
+              <text x={pos.x + 8} y={pos.y + 4} fill="#a1a1aa" fontSize="10">
+                {pt.paraphrase.slice(0, 28)}
+              </text>
+            </g>
           );
         })}
 

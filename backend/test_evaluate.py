@@ -106,11 +106,10 @@ class TestEvaluate(unittest.TestCase):
             }
         ]
         fake_proj = {
-            "points": [
-                {"text": f"t{i}", "x": float(i), "y": float(i * 0.5)}
-                for i in range(12)
-            ]
+            "mean": [0.0, 0.0, 0.0, 0.0],
+            "components": [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0]],
         }
+        fake_texts = [f"t{i}" for i in range(12)]
         fake_model_vis = MagicMock()
         fake_model_vis.encode.return_value = np.array(
             [[float(i), float(i * 0.5), 0.0, 0.0] for i in range(12)],
@@ -128,8 +127,8 @@ class TestEvaluate(unittest.TestCase):
             self.assertGreaterEqual(qual_res["accuracy_after"], qual_res["accuracy_before"])
 
         with patch("evaluate.fit_or_load_projection", return_value=fake_proj), patch(
-            "evaluate.get_model", return_value=fake_model_vis
-        ):
+            "evaluate._collect_past_pool", return_value=fake_texts
+        ), patch("evaluate.get_model", return_value=fake_model_vis):
             vis_res = check_visualizer_faithfulness()
             self.assertGreaterEqual(vis_res["trustworthiness"], 0.9)
 

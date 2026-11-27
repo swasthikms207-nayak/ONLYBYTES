@@ -6,7 +6,7 @@ from typing import Any, Dict, Literal, Optional
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -417,12 +417,14 @@ def get_calibration_plot():
 @app.get("/map")
 def get_intent_map(
     query: Optional[str] = None,
-    steered_query: Optional[str] = None,
-    clarification_choice: Optional[str] = None,
+    readings: Optional[list[str]] = Query(default=None),
+    target_reading: Optional[str] = None,
+    alpha: float = 0.5,
 ):
-    """Return 2D PCA projection of example queries colored by intent plus before/after query points."""
+    """Return 2D PCA projection of query, its readings, and steered query position."""
     return get_map_data(
         query=query,
-        steered_query=steered_query,
-        clarification_choice=clarification_choice,
+        readings=readings,
+        target_reading=target_reading,
+        alpha=alpha,
     )

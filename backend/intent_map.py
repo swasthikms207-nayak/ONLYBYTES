@@ -1,3 +1,4 @@
+import csv
 import json
 from pathlib import Path
 from typing import Any, Optional
@@ -5,27 +6,11 @@ from typing import Any, Optional
 import numpy as np
 from sklearn.decomposition import PCA
 
-from intent_embeddings import (
-    DATA_DIR,
-    INTENTS_FILE,
-    MODEL_NAME,
-    _l2_normalize,
-    compute_and_cache_centroids,
-    get_model,
-)
+from intent_embeddings import DATA_DIR, INTENTS_FILE, MODEL_NAME, _l2_normalize, get_model
 
-MAP_CACHE_FILE = DATA_DIR / "intent_map_pca.json"
-
-INTENT_COLORS: dict[str, str] = {
-    "payment_reversal": "#ef4444",
-    "cancel_order": "#f97316",
-    "refund_status": "#eab308",
-    "account_closure": "#8b5cf6",
-    "change_address": "#06b6d4",
-    "card_block": "#ec4899",
-    "order_status": "#22c55e",
-    "transaction_dispute": "#3b82f6",
-}
+MAP_CACHE_FILE = DATA_DIR / "query_readings_pca.json"
+PAST_QUERIES_CSV = DATA_DIR / "test_queries.csv"
+CUSTOMERS_FILE = DATA_DIR / "mock_customers.json"
 
 _cached_projection: Optional[dict[str, Any]] = None
 
@@ -34,12 +19,35 @@ def _project_array(vectors: np.ndarray, mean: np.ndarray, components: np.ndarray
     return (vectors - mean) @ components.T
 
 
+def _collect_past_pool(
+    past_csv: Path = PAST_QUERIES_CSV,
+    customers_path: Path = CUSTOMERS_FILE,
+) -> list[str]:
+    """Collect a pool of past queries and chat/reading texts to fit the 2D projection."""
+    texts: list[str] = []
+    if past_csv.exists():
+        with past_csv.open("r", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                q = str(row.get("query", "")).strip()
+                if q:
+                    texts.append(q)
+    if customers_path.exists():
+        with customers_path.open("r", encoding="utf-8") as f:
+            for cust in json.load(f).get("customers", []):
+                for turn in cust.get("chat_history", []):
+                    msg = str(turn.get("message", "")).strip()
+                    if msg:
+                        texts.append(msg)
+    return list(dict.fromkeys(texts))
+
+
 def fit_or_load_projection(
-    intents_path: Path = INTENTS_FILE,
+    past_csv: Path = PAST_QUERIES_CSV,
+    customers_path: Path = CUSTOMERS_FILE,
     cache_path: Path = MAP_CACHE_FILE,
     force_recompute: bool = False,
 ) -> dict[str, Any]:
-    """Fit 2D PCA once on all example queries and cache the projection + points to disk."""
+    """Fit 2D PCA once on a pool of past queries/readings and cache the projection to disk."""
     global _cached_projection
 
     if _cached_projection is not None and not force_recompute and cache_path == MAP_CACHE_FILE:
@@ -53,45 +61,21 @@ def fit_or_load_projection(
                 _cached_projection = data
             return data
 
-    if not intents_path.exists():
-        raise FileNotFoundError(f"Intents file not found: {intents_path}")
-
-    with intents_path.open("r", encoding="utf-8") as f:
-        intents_data = json.load(f).get("intents", [])
-
-    texts: list[str] = []
-    intents: list[str] = []
-    for item in intents_data:
-        intent = item["intent"]
-        for ex in item.get("examples", []):
-            texts.append(ex)
-            intents.append(intent)
-
+    texts = _collect_past_pool(past_csv=past_csv, customers_path=customers_path)
     if len(texts) < 2:
-        raise ValueError("At least 2 example queries are required to fit 2D PCA.")
+        raise ValueError("At least 2 past queries/readings are required to fit 2D PCA.")
 
     model = get_model()
     embeddings = np.asarray(model.encode(texts, normalize_embeddings=True), dtype=np.float32)
 
     pca = PCA(n_components=2, random_state=42)
-    coords = pca.fit_transform(embeddings)
-
-    points = [
-        {
-            "intent": intent,
-            "color": INTENT_COLORS.get(intent, "#a1a1aa"),
-            "text": text,
-            "x": round(float(coord[0]), 4),
-            "y": round(float(coord[1]), 4),
-        }
-        for intent, text, coord in zip(intents, texts, coords)
-    ]
+    pca.fit(embeddings)
 
     payload = {
         "model_name": MODEL_NAME,
+        "pool_size": len(texts),
         "mean": pca.mean_.astype(float).tolist(),
         "components": pca.components_.astype(float).tolist(),
-        "points": points,
     }
 
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -103,15 +87,11 @@ def fit_or_load_projection(
     return payload
 
 
-def project_query_2d(query: str, projection: dict[str, Any]) -> dict[str, Any]:
-    """Project a single query into the already-fitted 2D PCA space."""
-    model = get_model()
-    vec = np.asarray(model.encode([query], normalize_embeddings=True)[0], dtype=np.float32)
+def _project_vec_2d(vec: np.ndarray, projection: dict[str, Any]) -> dict[str, float]:
     mean = np.asarray(projection["mean"], dtype=np.float32)
     components = np.asarray(projection["components"], dtype=np.float32)
     xy = _project_array(vec, mean, components)
     return {
-        "text": query,
         "x": round(float(xy[0]), 4),
         "y": round(float(xy[1]), 4),
     }
@@ -119,36 +99,51 @@ def project_query_2d(query: str, projection: dict[str, Any]) -> dict[str, Any]:
 
 def get_map_data(
     query: Optional[str] = None,
-    steered_query: Optional[str] = None,
-    clarification_choice: Optional[str] = None,
-    intents_path: Path = INTENTS_FILE,
+    readings: Optional[list[str]] = None,
+    target_reading: Optional[str] = None,
+    alpha: float = 0.5,
     cache_path: Path = MAP_CACHE_FILE,
 ) -> dict[str, Any]:
-    """Return 2D projected example points and optional before/after steering query positions."""
-    projection = fit_or_load_projection(intents_path=intents_path, cache_path=cache_path)
+    """Project the query, its readings, and the steered query into the fitted 2D space."""
+    projection = fit_or_load_projection(cache_path=cache_path)
+    model = get_model()
 
-    query_before = None
-    query_after = None
+    query_point = None
+    reading_points: list[dict[str, Any]] = []
+    steered_point = None
 
+    q_vec = None
     if query and query.strip():
         clean_query = query.strip()
-        query_before = project_query_2d(clean_query, projection)
+        q_vec = _l2_normalize(
+            np.asarray(model.encode([clean_query], normalize_embeddings=True)[0], dtype=np.float32)
+        )
+        xy = _project_vec_2d(q_vec, projection)
+        query_point = {"text": clean_query, **xy}
 
-        effective_steered = None
-        if steered_query and steered_query.strip():
-            effective_steered = steered_query.strip()
-        elif clarification_choice and clarification_choice.strip():
-            effective_steered = (
-                f"{clean_query} (User selected clarification: {clarification_choice.strip()})"
+    if readings:
+        clean_readings = [r.strip() for r in readings if r and r.strip()]
+        if clean_readings:
+            r_vecs = np.asarray(
+                model.encode(clean_readings, normalize_embeddings=True), dtype=np.float32
             )
+            for text, rv in zip(clean_readings, r_vecs):
+                xy = _project_vec_2d(_l2_normalize(rv), projection)
+                reading_points.append({"paraphrase": text, **xy})
 
-        if effective_steered:
-            query_after = project_query_2d(effective_steered, projection)
+    if q_vec is not None and target_reading and target_reading.strip():
+        clean_target = target_reading.strip()
+        t_vec = _l2_normalize(
+            np.asarray(model.encode([clean_target], normalize_embeddings=True)[0], dtype=np.float32)
+        )
+        steered_vec = _l2_normalize(q_vec + float(alpha) * (t_vec - q_vec))
+        xy = _project_vec_2d(steered_vec, projection)
+        steered_point = {"text": clean_target, "alpha": float(alpha), **xy}
 
     return {
-        "points": projection["points"],
-        "query_before": query_before,
-        "query_after": query_after,
+        "query_point": query_point,
+        "reading_points": reading_points,
+        "steered_point": steered_point,
     }
 
 
@@ -157,7 +152,6 @@ def steer_query(
     target_reading: str,
     alpha: float,
     readings: Optional[list[Any]] = None,
-    intents_path: Path = INTENTS_FILE,
     cache_path: Path = MAP_CACHE_FILE,
 ) -> dict[str, Any]:
     """Steer query_embedding toward target_reading_embedding by alpha and return similarities to every reading."""
@@ -166,10 +160,7 @@ def steer_query(
     if not target_reading or not target_reading.strip():
         raise ValueError("target_reading must be non-empty")
 
-    projection = fit_or_load_projection(intents_path=intents_path, cache_path=cache_path)
-    mean = np.asarray(projection["mean"], dtype=np.float32)
-    components = np.asarray(projection["components"], dtype=np.float32)
-
+    projection = fit_or_load_projection(cache_path=cache_path)
     model = get_model()
     clean_query = query.strip()
     clean_target = target_reading.strip()
@@ -182,8 +173,8 @@ def steer_query(
     )
     steered_vec = _l2_normalize(q_vec + float(alpha) * (t_vec - q_vec))
 
-    xy_before = _project_array(q_vec, mean, components)
-    xy_after = _project_array(steered_vec, mean, components)
+    old_xy = _project_vec_2d(q_vec, projection)
+    new_xy = _project_vec_2d(steered_vec, projection)
 
     reading_items: list[dict[str, Any]] = []
     if readings:
@@ -230,8 +221,8 @@ def steer_query(
         "query": clean_query,
         "target_reading": clean_target,
         "alpha": float(alpha),
-        "old_point": {"x": round(float(xy_before[0]), 4), "y": round(float(xy_before[1]), 4)},
-        "new_point": {"x": round(float(xy_after[0]), 4), "y": round(float(xy_after[1]), 4)},
+        "old_point": old_xy,
+        "new_point": new_xy,
         "before_similarities": before_similarities,
         "similarities": after_similarities,
     }
