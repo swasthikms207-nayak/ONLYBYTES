@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
 from intent_embeddings import compute_ambiguity_score, compute_similarity_margin
+from intent_map import get_map_data
 
 # Load environment variables from root .env (fallback to backend/.env)
 ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
@@ -292,3 +293,17 @@ async def decide_pipeline(request: DecideEndpointRequest):
 def get_decisions():
     """Return all logged decisions from POST /decide calls."""
     return {"decisions": decisions_log}
+
+
+@app.get("/map")
+def get_intent_map(
+    query: Optional[str] = None,
+    steered_query: Optional[str] = None,
+    clarification_choice: Optional[str] = None,
+):
+    """Return 2D PCA projection of example queries colored by intent plus before/after query points."""
+    return get_map_data(
+        query=query,
+        steered_query=steered_query,
+        clarification_choice=clarification_choice,
+    )
