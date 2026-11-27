@@ -15,6 +15,14 @@ class TestDecideEndpoint(unittest.TestCase):
         mock_analysis = {
             "is_ambiguous": False,
             "ambiguity_type": "none",
+            "ambiguous_spans": [],
+            "readings": [
+                {
+                    "paraphrase": "Check the status of my order.",
+                    "probability": 1.0,
+                    "intent": "order_status",
+                }
+            ],
             "candidate_intents": [
                 {"intent": "order_status", "confidence": 0.9},
                 {"intent": "cancel_order", "confidence": 0.1},

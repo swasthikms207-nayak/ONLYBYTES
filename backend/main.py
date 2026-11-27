@@ -281,6 +281,8 @@ async def decide_pipeline(request: DecideEndpointRequest):
     response_payload = {
         "is_ambiguous": analysis["is_ambiguous"],
         "type": analysis["ambiguity_type"],
+        "ambiguous_spans": analysis.get("ambiguous_spans", []),
+        "readings": analysis.get("readings", []),
         "candidates": analysis["candidate_intents"],
         "risk_tier": decision_res["risk_tier"],
         "threshold": decision_res["threshold"],
