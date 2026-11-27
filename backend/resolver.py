@@ -78,7 +78,7 @@ VALID_TYPES = {
 
 RoutingStatus = Literal["AUTO_ACCEPT", "ACCEPT_WITH_ALTERNATIVES", "REVIEW"]
 
-PLACEHOLDER_KEYS = {"", "your_llm_api_key_here", "sk-your-key-here"}
+PLACEHOLDER_KEYS = {"", "your_llm_api_key_here", "your_groq_api_key_here", "your_gemini_api_key_here", "sk-your-key-here"}
 SELF_CONSISTENCY_SAMPLES = 5
 CONFLICT_THRESHOLD = 0.3   # min probability difference to call a conflict
 TEMP_SCALE_FACTOR = 2.0    # divides mean sample temperature for penalty
@@ -208,9 +208,13 @@ def _strip_code_fences(raw: str) -> str:
 def _build_llm_system_prompt() -> str:
     return (
         "You are a linguistic ambiguity analyzer.\n"
-        "For the given target sentence (and optional surrounding context):\n"
-        "1. Detect ambiguity_type: lexical | syntactic | referential | scope | pragmatic | underspecified | none.\n"
-        "2. List ALL candidate readings with probabilities that sum to 1.0.\n"
+        "For the given target sentence (optional surrounding context, and optional linguistic detector hints):\n"
+        "1. Detect ambiguity_type: lexical | syntactic | referential | scope | semantic | pragmatic | underspecified | ellipsis | temporal_numeric | cultural_domain | none.\n"
+        "   - Watch carefully for PP-attachment ('I saw the man with the telescope'), quantifier/negation scope ('Every student read a book'), "
+        "pronouns with multiple antecedents, comparative ellipsis ('more than Meera'), ambiguous dates/times/amounts ('05/06/2026', 'next Monday', 'at 5'), "
+        "domain homonyms ('Table the motion', 'bank', 'kernel'), and indirect requests.\n"
+        "   - If detected_ambiguity_hints are provided, evaluate them carefully; only return 'none' if the sentence truly has a single unambiguous reading.\n"
+        "2. List ALL candidate readings (2-4) with probabilities that sum to 1.0.\n"
         "3. Pick top_reading using the sentence PLUS any provided context (if present).\n"
         "4. Provide top_probability: the probability you assign to top_reading.\n"
         "If there is no ambiguity, return ambiguity_type='none', top_reading=original sentence, alternatives=[].\n"
@@ -232,10 +236,13 @@ async def _call_llm_once(
     text: str,
     context_items: list[str],
     temperature: float,
+    detected_hints: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {"sentence": text}
     if context_items:
         payload["context"] = context_items
+    if detected_hints:
+        payload["detected_ambiguity_hints"] = detected_hints
 
     response = await client.post(
         f"{base_url}/chat/completions",
@@ -334,6 +341,7 @@ async def _resolve_single_llm(
     n_samples: int = SELF_CONSISTENCY_SAMPLES,
     detected_types: Optional[list[str]] = None,
     confidence_penalty: float = 0.0,
+    strong_spacy_types: Optional[list[str]] = None,
 ) -> ResolvedRecord:
     """
     1. Score sentence alone (temp=0, no context).
@@ -343,11 +351,12 @@ async def _resolve_single_llm(
     4. Calibrate confidence with temperature scaling.
     """
     sample_temps = [0.0, 0.3, 0.5, 0.7, 0.9][:n_samples]
+    hints = [t for t in (detected_types or []) if t != "none"] or None
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        alone_task = _call_llm_once(client, api_key, base_url, model, text, [], temperature=0.0)
+        alone_task = _call_llm_once(client, api_key, base_url, model, text, [], temperature=0.0, detected_hints=hints)
         context_tasks = [
-            _call_llm_once(client, api_key, base_url, model, text, context_items, temperature=t)
+            _call_llm_once(client, api_key, base_url, model, text, context_items, temperature=t, detected_hints=hints)
             for t in sample_temps
         ]
         alone_res, *ctx_samples = await asyncio.gather(alone_task, *context_tasks)
@@ -369,6 +378,11 @@ async def _resolve_single_llm(
     if amb_type not in VALID_TYPES:
         amb_type = "underspecified"
 
+    # If high-precision spaCy linguistic detector found a strong ambiguity (>= 0.70)
+    # that the LLM missed ('none'), honor the spaCy linguistic detection.
+    if amb_type == "none" and strong_spacy_types:
+        amb_type = strong_spacy_types[0]
+
     # ── Build top_reading and alternatives (always preserved) ─────────────────
     if amb_type == "none":
         top_reading = text
@@ -383,6 +397,13 @@ async def _resolve_single_llm(
             for alt in chosen.get("alternatives", [])
             if str(alt.get("reading", "")).strip()
         ]
+        if not alternatives:
+            alternatives = [
+                AlternativeReading(
+                    reading=f"Alternative {amb_type} interpretation of: {text}",
+                    probability=0.35,
+                )
+            ]
 
     # ── Conflict detection ───────────────────────────────────────────────────
     alone_top_raw = str(alone_res.get("top_reading", text)).strip() or text
@@ -420,7 +441,10 @@ async def _resolve_single_llm(
     raw_conf = max(1e-6, min(1.0 - 1e-6, avg_prob * agreement))
     logit = math.log(raw_conf / (1.0 - raw_conf))
     cal_conf = 1.0 / (1.0 + math.exp(-logit / cal_temp))
-    confidence = round(max(0.0, min(1.0, cal_conf - confidence_penalty)), 4)
+    effective_penalty = 0.0 if (amb_type == "none" and (not detected_types or detected_types == ["none"])) else confidence_penalty
+    confidence = round(max(0.0, min(1.0, cal_conf - effective_penalty)), 4)
+    if str(chosen.get("ambiguity_type", "none")).lower() == "none" and amb_type != "none":
+        confidence = min(confidence, 0.70)
 
     status = route_record(confidence=confidence, conflict=conflict)
     det_types = detected_types if detected_types is not None else ([amb_type] if amb_type != "none" else ["none"])
@@ -490,6 +514,7 @@ def _resolve_single_mock(
     context_summary: str,
     detected_types: Optional[list[str]] = None,
     confidence_penalty: float = 0.0,
+    strong_spacy_types: Optional[list[str]] = None,
 ) -> ResolvedRecord:
     """Deterministic mock used when LLM_API_KEY is absent or placeholder."""
     lower = text.lower()
@@ -619,12 +644,63 @@ def _resolve_single_mock(
             False,
         )
 
+    if strong_spacy_types:
+        st = strong_spacy_types[0]
+        return _finish(
+            st,  # type: ignore[arg-type]
+            f"Resolved {st} interpretation of '{text}'.",
+            [
+                AlternativeReading(reading=f"Primary {st} interpretation of '{text}'.", probability=0.65),
+                AlternativeReading(reading=f"Alternative {st} interpretation of '{text}'.", probability=0.35),
+            ],
+            0.70,
+            0.20,
+            False,
+        )
+
     return _finish("none", text, [], 0.92, 0.0, False)
 
 
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
+def _get_llm_providers() -> list[tuple[str, str, str, str]]:
+    """
+    Return ordered list of (name, api_key, base_url, model).
+    Prioritizes Groq, with Gemini as fallback (and optional generic LLM_API_KEY).
+    """
+    providers: list[tuple[str, str, str, str]] = []
+
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if groq_key and groq_key not in PLACEHOLDER_KEYS:
+        providers.append((
+            "groq",
+            groq_key,
+            os.getenv("GROQ_API_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/"),
+            os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip(),
+        ))
+
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key and gemini_key not in PLACEHOLDER_KEYS:
+        providers.append((
+            "gemini",
+            gemini_key,
+            os.getenv("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai").rstrip("/"),
+            os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip(),
+        ))
+
+    llm_key = os.getenv("LLM_API_KEY", "").strip()
+    if llm_key and llm_key not in PLACEHOLDER_KEYS:
+        providers.append((
+            "custom",
+            llm_key,
+            os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+            os.getenv("LLM_MODEL", "gpt-4o-mini").strip(),
+        ))
+
+    return providers
+
 
 async def resolve_batch(
     records: list[str],
@@ -648,16 +724,11 @@ async def resolve_batch(
     if not cleaned:
         return []
 
-    api_key = os.getenv("LLM_API_KEY", "").strip()
-    base_url = os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    model = os.getenv("LLM_MODEL", "gpt-4o-mini").strip()
-    use_llm = bool(api_key and api_key not in PLACEHOLDER_KEYS)
+    providers = _get_llm_providers()
+    sem = asyncio.Semaphore(4)
 
-    results: list[dict[str, Any]] = []
-    for idx, text in enumerate(cleaned):
-        # Auto surrounding records (±2 neighbours)
+    async def _process_one(idx: int, text: str) -> dict[str, Any]:
         surrounding = [r for i, r in enumerate(cleaned) if i != idx and abs(i - idx) <= 2]
-
         context_items, context_summary = build_context_list(
             surrounding=surrounding,
             explicit=explicit_context,
@@ -674,28 +745,38 @@ async def resolve_batch(
         detected_types = [k for k, v in scores.items() if k != "none" and v >= 0.5]
         if not detected_types:
             detected_types = ["none"]
+        strong_spacy = [k for k, v in spacy_det.items() if k != "none" and v.get("score", 0.0) >= 0.70]
 
-        if use_llm:
-            resolved = await _resolve_single_llm(
-                text=text,
-                context_items=context_items,
-                context_summary=context_summary,
-                api_key=api_key,
-                base_url=base_url,
-                model=model,
-                detected_types=detected_types,
-                confidence_penalty=conf_penalty,
-            )
-        else:
+        resolved: Optional[ResolvedRecord] = None
+        async with sem:
+            for _, api_key, base_url, model in providers:
+                try:
+                    resolved = await _resolve_single_llm(
+                        text=text,
+                        context_items=context_items,
+                        context_summary=context_summary,
+                        api_key=api_key,
+                        base_url=base_url,
+                        model=model,
+                        detected_types=detected_types,
+                        confidence_penalty=conf_penalty,
+                        strong_spacy_types=strong_spacy,
+                    )
+                    break
+                except Exception:
+                    continue
+
+        if resolved is None:
             resolved = _resolve_single_mock(
                 text=text,
                 context_items=context_items,
                 context_summary=context_summary,
                 detected_types=detected_types,
                 confidence_penalty=conf_penalty,
+                strong_spacy_types=strong_spacy,
             )
         dumped = resolved.model_dump()
         RECORD_STORE[dumped["id"]] = dumped
-        results.append(dumped)
+        return dumped
 
-    return results
+    return list(await asyncio.gather(*[_process_one(idx, text) for idx, text in enumerate(cleaned)]))

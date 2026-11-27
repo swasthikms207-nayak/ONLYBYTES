@@ -24,11 +24,14 @@ def build_inline_clarification(
     span: str = "",
 ) -> Optional[dict[str, Any]]:
     """
-    Generate ONE short inline question with 2-4 plain-language paraphrase options
-    plus a 'Something else' option.
-    NEVER generates a question for AUTO_ACCEPT or unambiguous ('none') records.
+    Generate ONE short optional inline question with 2-4 plain-language
+    paraphrase options plus a 'Something else' option.
+    ONLY generates a question for genuinely ambiguous sentences (never for
+    AUTO_ACCEPT or unambiguous 'none' records).
     """
     if status == "AUTO_ACCEPT" or ambiguity_type == "none":
+        return None
+    if not alternatives and top_reading.strip().lower() == text.strip().lower():
         return None
 
     target_span = span.strip()

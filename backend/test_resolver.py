@@ -21,7 +21,7 @@ class TestResolver(unittest.TestCase):
         self.assertEqual(parse_csv_records(csv_data), ["Block my card", "Cancel all items"])
 
     def test_resolve_batch_mock_fallback(self):
-        with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here"}):
+        with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here", "GROQ_API_KEY": "", "GEMINI_API_KEY": ""}):
             out = asyncio.run(
                 resolve_batch([
                     "Where is my order ORD_5501?",
@@ -90,7 +90,7 @@ class TestResolver(unittest.TestCase):
         mock_client.__aexit__.return_value = None
         mock_client.post = AsyncMock(side_effect=[make_resp(p) for p in responses])
 
-        with patch.dict("os.environ", {"LLM_API_KEY": "sk-test-key"}), patch(
+        with patch.dict("os.environ", {"LLM_API_KEY": "sk-test-key", "GROQ_API_KEY": "", "GEMINI_API_KEY": ""}), patch(
             "resolver.httpx.AsyncClient", return_value=mock_client
         ):
             out = asyncio.run(resolve_batch(["Close it", "My card was stolen"]))
@@ -114,7 +114,7 @@ class TestResolver(unittest.TestCase):
 
     def test_process_endpoint_text_and_csv(self):
         client = TestClient(app)
-        with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here"}):
+        with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here", "GROQ_API_KEY": "", "GEMINI_API_KEY": ""}):
             res = client.post(
                 "/process",
                 json={"raw_text": "Block my card\nCancel all items", "format": "text"},

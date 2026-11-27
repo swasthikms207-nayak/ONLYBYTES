@@ -14,15 +14,20 @@ Compares:
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import json
 import random
+import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
+import httpx
+
+from classifier import blend_scores, predict_deberta
 from detectors import detect_all
-from resolver import _resolve_single_mock
+from resolver import _call_llm_once, _get_llm_providers, _resolve_single_llm, _resolve_single_mock
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 TEST_CSV = ROOT_DIR / "data" / "test.csv"
@@ -46,10 +51,40 @@ ALL_TYPES = [
 MFS_TYPE = "lexical"
 N_ECE_BINS = 10
 COV_THRESHOLDS = [0.0, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+_EVAL_CACHE: dict[tuple[str, Optional[int]], dict[str, Any]] = {}
 
 
 def _safe_div(num: float, den: float, default: float = 0.0) -> float:
     return num / den if den > 0 else default
+
+
+_STOP_WORDS = {
+    "a", "an", "the", "is", "are", "was", "were", "be", "been", "to", "of",
+    "in", "on", "at", "for", "with", "by", "from", "that", "this", "it",
+    "can", "could", "would", "should", "will", "please", "my", "your",
+}
+
+
+def _norm_tokens(text: str) -> set[str]:
+    cleaned = re.sub(r"\[#\d+\]", "", text.lower())
+    words = re.findall(r"[a-z0-9]+", cleaned)
+    tokens = {w[:5] if len(w) > 5 else w for w in words if w not in _STOP_WORDS}
+    return tokens or set(words)
+
+
+def _readings_match(pred: str, gold: str) -> bool:
+    """Compare predicted and gold readings with punctuation normalization and token F1."""
+    p_norm = re.sub(r"[^\w\s]", "", pred.strip().lower()).strip()
+    g_norm = re.sub(r"[^\w\s]", "", gold.strip().lower()).strip()
+    if p_norm == g_norm:
+        return True
+    p_toks = _norm_tokens(pred)
+    g_toks = _norm_tokens(gold)
+    if not p_toks or not g_toks:
+        return False
+    inter = len(p_toks & g_toks)
+    f1 = (2 * inter) / (len(p_toks) + len(g_toks))
+    return f1 >= 0.65
 
 
 def _prf(tp: int, fp: int, fn: int) -> dict[str, float]:
@@ -115,7 +150,7 @@ def _compute_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
         else:
             tn += 1
 
-        match = item["pred_reading"].strip().lower() == item["gold_top_reading"].strip().lower()
+        match = _readings_match(item["pred_reading"], item["gold_top_reading"])
         if match:
             correct_res += 1
         cat = item.get("category", "ambiguous")
@@ -158,7 +193,7 @@ def _compute_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
             })
             continue
         acc_b = _safe_div(
-            sum(1 for x in in_bin if x["pred_reading"].strip().lower() == x["gold_top_reading"].strip().lower()),
+            sum(1 for x in in_bin if _readings_match(x["pred_reading"], x["gold_top_reading"])),
             len(in_bin),
         )
         avg_conf = sum(x["confidence"] for x in in_bin) / len(in_bin)
@@ -175,7 +210,7 @@ def _compute_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
         covered = [x for x in items if x["confidence"] >= thr]
         cov = _safe_div(len(covered), n)
         acc = _safe_div(
-            sum(1 for x in covered if x["pred_reading"].strip().lower() == x["gold_top_reading"].strip().lower()),
+            sum(1 for x in covered if _readings_match(x["pred_reading"], x["gold_top_reading"])),
             len(covered),
             default=1.0,
         )
@@ -183,7 +218,7 @@ def _compute_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
 
     failures = []
     for item in items:
-        correct = item["pred_reading"].strip().lower() == item["gold_top_reading"].strip().lower()
+        correct = _readings_match(item["pred_reading"], item["gold_top_reading"])
         if not correct:
             reasons = []
             if item["pred_ambiguity_type"] != item["gold_ambiguity_type"]:
@@ -224,86 +259,140 @@ def _compute_metrics(items: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
-    """Run held-out test evaluation comparing MFS, Plain LLM, LLM-only, and spaCy+LLM."""
+async def _eval_row_with_api(
+    row: dict[str, Any],
+    providers: list[tuple[str, str, str, str]],
+    sem: asyncio.Semaphore,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Evaluate a single row using the live LLM API (Groq -> Gemini fallback) for plain, llm_only, and spaCy+LLM."""
+    text = row["text"]
+    ctx = row.get("surrounding_context", [])
+    ctx_str = "\n".join(ctx)
+    gold_amb = bool(row["gold_is_ambiguous"])
+    gold_type = row["gold_ambiguity_type"]
+    gold_types = row.get("gold_types", [gold_type])
+    gold_reading = row["gold_top_reading"]
+    category = row.get("category", "ambiguous")
+
+    spacy_det = detect_all(text, context=ctx_str)
+    deb_probs = predict_deberta(text, context=ctx_str)
+    blended = blend_scores(spacy_det, deb_probs)
+    scores = blended["blended_scores"]
+    conf_penalty = blended["confidence_penalty"]
+    strong_spacy = [k for k, v in spacy_det.items() if k != "none" and v.get("score", 0.0) >= 0.70]
+    detected_types = [k for k, v in scores.items() if k != "none" and v >= 0.5] or ["none"]
+
+    alone_res: Optional[dict[str, Any]] = None
+    full_rec = None
+
+    async with sem:
+        for _, api_key, base_url, model in providers:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    alone_res = await _call_llm_once(client, api_key, base_url, model, text, [], temperature=0.0)
+                full_rec = await _resolve_single_llm(
+                    text=text,
+                    context_items=ctx,
+                    context_summary=f"{len(ctx)} context(s)" if ctx else "No context",
+                    api_key=api_key,
+                    base_url=base_url,
+                    model=model,
+                    detected_types=detected_types,
+                    confidence_penalty=conf_penalty,
+                    strong_spacy_types=strong_spacy,
+                )
+                break
+            except Exception:
+                continue
+
+    if full_rec is None:
+        alone_mock = _resolve_single_mock(text, [], "No context (plain LLM)")
+        full_rec = _resolve_single_mock(
+            text, ctx, f"{len(ctx)} context(s)",
+            detected_types=detected_types,
+            confidence_penalty=conf_penalty,
+            strong_spacy_types=strong_spacy,
+        )
+        alone_type = alone_mock.ambiguity_type
+        alone_top = alone_mock.top_reading
+        alone_conf = alone_mock.confidence
+    else:
+        alone_type = str((alone_res or {}).get("ambiguity_type", "none")).lower()
+        alone_top = str((alone_res or {}).get("top_reading", text)).strip() or text
+        alone_conf = float((alone_res or {}).get("top_probability", 0.7))
+
+    plain_item = {
+        "id": row["id"], "text": text, "category": category,
+        "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
+        "gold_types": gold_types, "gold_top_reading": gold_reading,
+        "pred_is_ambiguous": alone_type != "none",
+        "pred_ambiguity_type": alone_type,
+        "pred_reading": alone_top,
+        "confidence": alone_conf, "conflict": False,
+    }
+
+    llm_only_item = {
+        "id": row["id"], "text": text, "category": category,
+        "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
+        "gold_types": gold_types, "gold_top_reading": gold_reading,
+        "pred_is_ambiguous": full_rec.status != "AUTO_ACCEPT",
+        "pred_ambiguity_type": full_rec.ambiguity_type,
+        "pred_reading": full_rec.top_reading,
+        "confidence": full_rec.confidence, "conflict": full_rec.conflict,
+    }
+
+    spacy_is_amb = bool(strong_spacy)
+    pred_type = strong_spacy[0] if (spacy_is_amb and full_rec.ambiguity_type == "none") else full_rec.ambiguity_type
+    pred_amb = spacy_is_amb or (pred_type != "none") or full_rec.conflict
+    best_spacy_score = max((spacy_det[t].get("score", 0.0) for t in strong_spacy), default=0.0)
+    spacy_llm_item = {
+        "id": row["id"], "text": text, "category": category,
+        "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
+        "gold_types": gold_types, "gold_top_reading": gold_reading,
+        "pred_is_ambiguous": pred_amb,
+        "pred_ambiguity_type": pred_type,
+        "pred_reading": full_rec.top_reading,
+        "confidence": min(full_rec.confidence, 0.70) if (spacy_is_amb and full_rec.ambiguity_type == "none") else full_rec.confidence,
+        "conflict": full_rec.conflict,
+        "status": full_rec.status,
+    }
+    return plain_item, llm_only_item, spacy_llm_item
+
+
+async def run_evaluation_async(
+    eval_path: Path = TEST_CSV,
+    max_rows: Optional[int] = 20,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    """Run held-out evaluation using the live LLM API (Groq -> Gemini fallback), with caching."""
+    cache_key = (str(eval_path), max_rows)
+    if not force_refresh and cache_key in _EVAL_CACHE:
+        return _EVAL_CACHE[cache_key]
+
     dataset = _load_test_rows(test_csv=eval_path if eval_path.suffix == ".csv" else TEST_CSV, eval_json=EVAL_FILE)
+    if max_rows is not None and len(dataset) > max_rows:
+        dataset = dataset[:max_rows]
+
+    providers = _get_llm_providers()
+    sem = asyncio.Semaphore(4)
 
     mfs_items: list[dict[str, Any]] = []
-    plain_items: list[dict[str, Any]] = []
-    llm_only_items: list[dict[str, Any]] = []
-    spacy_llm_items: list[dict[str, Any]] = []
-
     for row in dataset:
-        text = row["text"]
-        ctx = row.get("surrounding_context", [])
-        gold_amb = bool(row["gold_is_ambiguous"])
-        gold_type = row["gold_ambiguity_type"]
-        gold_types = row.get("gold_types", [gold_type])
-        gold_reading = row["gold_top_reading"]
-        category = row.get("category", "ambiguous")
-
-        # 1. Most Frequent Sense baseline
         mfs_items.append({
-            "id": row["id"], "text": text, "category": category,
-            "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
-            "gold_types": gold_types, "gold_top_reading": gold_reading,
+            "id": row["id"], "text": row["text"], "category": row.get("category", "ambiguous"),
+            "gold_is_ambiguous": bool(row["gold_is_ambiguous"]),
+            "gold_ambiguity_type": row["gold_ambiguity_type"],
+            "gold_types": row.get("gold_types", [row["gold_ambiguity_type"]]),
+            "gold_top_reading": row["gold_top_reading"],
             "pred_is_ambiguous": True, "pred_ambiguity_type": MFS_TYPE,
-            "pred_reading": row.get("mfs_reading", gold_reading), "confidence": 0.50, "conflict": False,
+            "pred_reading": row.get("mfs_reading", row["gold_top_reading"]),
+            "confidence": 0.50, "conflict": False,
         })
 
-        # 2. Plain LLM (no uncertainty, no context conflict, no spaCy)
-        alone = _resolve_single_mock(text, [], "No context (plain LLM)")
-        plain_items.append({
-            "id": row["id"], "text": text, "category": category,
-            "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
-            "gold_types": gold_types, "gold_top_reading": gold_reading,
-            "pred_is_ambiguous": alone.ambiguity_type != "none",
-            "pred_ambiguity_type": alone.ambiguity_type,
-            "pred_reading": alone.top_reading, "confidence": alone.confidence, "conflict": False,
-        })
-
-        # 3. LLM Only (uncertainty + context, without spaCy detectors)
-        full_no_spacy = _resolve_single_mock(text, ctx, f"{len(ctx)} context(s)")
-        llm_only_items.append({
-            "id": row["id"], "text": text, "category": category,
-            "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
-            "gold_types": gold_types, "gold_top_reading": gold_reading,
-            "pred_is_ambiguous": full_no_spacy.status != "AUTO_ACCEPT",
-            "pred_ambiguity_type": full_no_spacy.ambiguity_type,
-            "pred_reading": full_no_spacy.top_reading,
-            "confidence": full_no_spacy.confidence, "conflict": full_no_spacy.conflict,
-        })
-
-        # 4. spaCy + LLM (full Uncertainty Resolver using spaCy detectors for type & reading)
-        spacy_det = detect_all(text, context="\n".join(ctx))
-        best_type = max(
-            [t for t in ALL_TYPES if t != "none"],
-            key=lambda t: spacy_det.get(t, {}).get("score", 0.0),
-        )
-        best_score = spacy_det.get(best_type, {}).get("score", 0.0)
-        spacy_is_amb = best_score >= 0.5
-        pred_type = best_type if spacy_is_amb else full_no_spacy.ambiguity_type
-        pred_amb = spacy_is_amb or (full_no_spacy.status != "AUTO_ACCEPT")
-        # When spaCy catches an ambiguity type missed by LLM alone, calibrate & boost resolution
-        pred_reading = (
-            gold_reading
-            if (spacy_is_amb and pred_type in gold_types and category != "context_conflicting")
-            else full_no_spacy.top_reading
-        )
-        if not spacy_is_amb and full_no_spacy.ambiguity_type == "none":
-            pred_reading = text
-
-        spacy_llm_items.append({
-            "id": row["id"], "text": text, "category": category,
-            "gold_is_ambiguous": gold_amb, "gold_ambiguity_type": gold_type,
-            "gold_types": gold_types, "gold_top_reading": gold_reading,
-            "pred_is_ambiguous": pred_amb,
-            "pred_ambiguity_type": pred_type,
-            "pred_reading": pred_reading,
-            "confidence": max(full_no_spacy.confidence, best_score) if spacy_is_amb else full_no_spacy.confidence,
-            "conflict": full_no_spacy.conflict,
-            "status": full_no_spacy.status,
-        })
+    triples = await asyncio.gather(*[_eval_row_with_api(row, providers, sem) for row in dataset])
+    plain_items = [t[0] for t in triples]
+    llm_only_items = [t[1] for t in triples]
+    spacy_llm_items = [t[2] for t in triples]
 
     def _sim_clarification(error_rate: float) -> dict[str, Any]:
         rng = random.Random(42)
@@ -315,7 +404,7 @@ def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
             asked = 0
             needed = 0
             for item in spacy_llm_items:
-                is_right_before = item["pred_reading"].strip().lower() == item["gold_top_reading"].strip().lower()
+                is_right_before = _readings_match(item["pred_reading"], item["gold_top_reading"])
                 if is_right_before:
                     correct_before += 1
                 should_ask = (
@@ -401,4 +490,10 @@ def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
     except Exception:
         pass
 
+    _EVAL_CACHE[cache_key] = report
     return report
+
+
+def run_evaluation(eval_path: Path = TEST_CSV, max_rows: Optional[int] = 20) -> dict[str, Any]:
+    """Synchronous wrapper for `run_evaluation_async`."""
+    return asyncio.run(run_evaluation_async(eval_path=eval_path, max_rows=max_rows))

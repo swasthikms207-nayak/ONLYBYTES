@@ -1,20 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import EvaluationTab from "./components/EvaluationTab.jsx";
 
-/* ── Sample data ─────────────────────────────────────────────────── */
-const SAMPLES = {
-  text: [
-    "Where is my order ORD_5501?",
-    "Cancel all active items now",
-    "Cancel it before dispatch",
-    "Block my card",
-    "Help please",
-  ].join("\n"),
-  csv: `text\n"Where is my order ORD_5501?"\n"Cancel all active items now"\n"Cancel it before dispatch"\n"Close it now"`,
-  context:
-    "Customer last ordered item ORD_5501 on Nov 20. Order is pending dispatch.",
-};
-
 /* ── Type badge colours ──────────────────────────────────────────── */
 const TYPE_COLORS = {
   lexical: "#818cf8",
@@ -55,11 +41,11 @@ function DonutChart({ data }) {
           <title>{s.type}: {s.count}</title>
         </path>
       ))}
-      <circle cx={cx} cy={cy} r={36} fill="#18181b" />
-      <text x={cx} y={cy + 5} textAnchor="middle" fill="#f4f4f5" fontSize="14" fontWeight="700">
+      <circle cx={cx} cy={cy} r={36} fill="#FAF6EC" />
+      <text x={cx} y={cy + 5} textAnchor="middle" fill="#000000" fontSize="14" fontWeight="700">
         {total}
       </text>
-      <text x={cx} y={cy + 20} textAnchor="middle" fill="#a1a1aa" fontSize="9">
+      <text x={cx} y={cy + 20} textAnchor="middle" fill="#1D2D44" fontSize="9">
         total
       </text>
     </svg>
@@ -99,7 +85,7 @@ function HighlightedText({ text, type }) {
 /* ── Probability bar ─────────────────────────────────────────────── */
 function ProbBar({ reading, probability, isTop, conflict }) {
   const pct = Math.round(probability * 100);
-  const color = conflict && isTop ? "#ef4444" : isTop ? "#818cf8" : "#3f3f46";
+  const color = conflict && isTop ? "#b91c1c" : isTop ? "#1D2D44" : "#567C8D";
   return (
     <div className="prob-row">
       <span className="prob-label">{reading}</span>
@@ -141,7 +127,7 @@ function ClarifyBlock({ record, onClarify, onSkip }) {
   return (
     <div style={{ marginTop: "0.75rem", padding: "0.85rem", background: "var(--bg)", border: "1px solid var(--accent)", borderRadius: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-        <span className="col-title" style={{ color: "var(--accent)" }}>Clarify</span>
+        <span className="col-title" style={{ color: "var(--accent)" }}>Clarify (Optional)</span>
         <button type="button" className="ghost-btn" style={{ padding: "0.2rem 0.6rem", fontSize: "0.76rem" }} onClick={() => onSkip(record.id)} disabled={busy}>
           Skip
         </button>
@@ -229,8 +215,8 @@ function ResultCard({ r, idx, skipped, onClarify, onSkip, onUndo, canUndo }) {
         </div>
       </div>
 
-      {/* Inline Clarify block shown when record has clarification and wasn't skipped */}
-      {r.clarification && !r.clarified_by_user && !skipped && (
+      {/* Inline Clarify block shown only for ambiguous records when not skipped */}
+      {r.clarification && r.ambiguity_type !== "none" && !r.clarified_by_user && !skipped && (
         <div style={{ padding: "0 1.1rem 1rem" }}>
           <ClarifyBlock record={r} onClarify={handleClarify} onSkip={onSkip} />
         </div>
@@ -308,32 +294,14 @@ function SummaryCards({ results }) {
     { label: "Unambiguous", value: unambig, color: "#4ade80" },
   ];
 
-  // Type distribution for donut
-  const typeCounts = {};
-  results.forEach((r) => {
-    typeCounts[r.ambiguity_type] = (typeCounts[r.ambiguity_type] || 0) + 1;
-  });
-  const donutData = Object.entries(typeCounts).map(([type, count]) => ({ type, count }));
-
   return (
     <div className="summary-row">
       {cards.map((c) => (
-        <div className="summary-card" key={c.label}>
+        <div className="summary-card" key={c.label} style={{ flex: 1 }}>
           <span className="summary-value" style={{ color: c.color }}>{c.value}</span>
           <span className="summary-label">{c.label}</span>
         </div>
       ))}
-      <div className="summary-card donut-card">
-        <DonutChart data={donutData} />
-        <div className="donut-legend">
-          {donutData.map((d) => (
-            <span key={d.type} className="legend-item">
-              <span className="legend-dot" style={{ background: TYPE_COLORS[d.type] || "#52525b" }} />
-              {d.type} ({d.count})
-            </span>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -371,10 +339,8 @@ async function exportPDF(data) {
 
 /* ── Main App ────────────────────────────────────────────────────── */
 export default function App() {
-  const [activeTab, setActiveTab] = useState("resolver");
-  const [format, setFormat] = useState("text");
-  const [rawText, setRawText] = useState(SAMPLES.text);
-  const [context, setContext] = useState("");
+  const [page, setPage] = useState("upload"); // "upload" | "resolver" | "evaluation"
+  const [selectedFile, setSelectedFile] = useState(null);
   const [results, setResults] = useState([]);
   const [undoMap, setUndoMap] = useState({});
   const [skippedIds, setSkippedIds] = useState({});
@@ -386,36 +352,27 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState("all");
   const fileRef = useRef(null);
 
-  function loadSample() {
-    setRawText(format === "csv" ? SAMPLES.csv : SAMPLES.text);
-    setContext(SAMPLES.context);
-    setError("");
-  }
-
-  async function handleFileUpload(e) {
+  function handleFileUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    setFormat("csv");
-    setRawText(text);
+    setSelectedFile(file);
     setError("");
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!rawText.trim() || loading) return;
+    if (!selectedFile || loading) return;
     setLoading(true);
     setError("");
     try {
-      const body = { raw_text: rawText, format };
-      if (context.trim()) body.context = context.trim();
-      const res = await fetch("/process", {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await fetch("/process/file", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: formData,
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Failed to process");
+      if (!res.ok) throw new Error(data.detail || "Failed to process file");
       const processed = data.results || [];
       setResults(processed);
       setUndoMap({});
@@ -423,6 +380,7 @@ export default function App() {
       setReviewIdx(0);
       setFilterType("all");
       setFilterStatus("all");
+      setPage("resolver");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -483,185 +441,181 @@ export default function App() {
           <h1 className="app-title">Ambiguity Resolver</h1>
           <p className="app-sub">Detect, analyse, and route ambiguous text with LLM self-consistency.</p>
         </div>
-        <nav className="tab-nav">
-          {["resolver", "evaluation"].map((t) => (
+        {page !== "upload" && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
             <button
-              key={t}
-              className={`tab-btn ${activeTab === t ? "active" : ""}`}
-              onClick={() => setActiveTab(t)}
+              type="button"
+              className="ghost-btn"
+              onClick={() => { setPage("upload"); setError(""); }}
             >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              ← Upload Dataset
             </button>
-          ))}
-        </nav>
-      </header>
-
-      {activeTab === "evaluation" ? (
-        <EvaluationTab />
-      ) : (
-        <div className="resolver-layout">
-          {/* ════ LEFT PANEL ════ */}
-          <aside className="left-panel card">
-            <p className="panel-title">Input</p>
-
-            {/* Format toggle */}
-            <div className="toggle-group">
-              {["text", "csv"].map((f) => (
+            <nav className="tab-nav">
+              {["resolver", "evaluation"].map((t) => (
                 <button
-                  key={f}
-                  className={`toggle-btn ${format === f ? "active" : ""}`}
-                  onClick={() => { setFormat(f); setError(""); }}
+                  key={t}
+                  className={`tab-btn ${page === t ? "active" : ""}`}
+                  onClick={() => setPage(t)}
                 >
-                  {f === "text" ? "Pasted Text" : "CSV"}
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
-            </div>
+            </nav>
+          </div>
+        )}
+      </header>
 
-            {/* Text input */}
+      {page === "upload" ? (
+        <section style={{ maxWidth: 520, width: "100%", margin: "3rem auto 0" }}>
+          <div className="card left-panel">
+            <p className="panel-title">Upload Dataset</p>
             <form onSubmit={handleSubmit} className="input-form">
               <label className="field-label">
-                {format === "csv" ? "CSV records" : "Text records (one per line)"}
+                Select file <span className="field-hint">(.csv, .json, .jsonl, .xlsx, .parquet)</span>
               </label>
-              <textarea
-                rows={6}
-                placeholder={format === "csv" ? 'CSV with a "text" column…' : "One record per line…"}
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-              />
-
-              {/* Context box */}
-              <label className="field-label">
-                Context <span className="field-hint">(pasted text, chat history, doc metadata…)</span>
+              <label
+                className="ghost-btn"
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "2rem 1rem",
+                  borderStyle: "dashed",
+                  textAlign: "center",
+                  gap: "0.4rem",
+                }}
+              >
+                <span style={{ fontSize: "1.5rem" }}>📁</span>
+                <span>{selectedFile ? selectedFile.name : "Choose dataset file…"}</span>
+                <span style={{ fontSize: "0.78rem", color: "var(--muted)", fontWeight: 400 }}>
+                  {selectedFile
+                    ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                    : "Supports CSV, JSON, JSONL, XLSX, Parquet"}
+                </span>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv,.json,.jsonl,.xlsx,.parquet"
+                  onChange={handleFileUpload}
+                  hidden
+                />
               </label>
-              <textarea
-                rows={3}
-                placeholder="Optional: paste previous messages, document excerpt, or metadata…"
-                value={context}
-                onChange={(e) => setContext(e.target.value)}
-              />
 
               {error && <span className="error-text">{error}</span>}
 
               <div className="btn-row">
-                <button type="button" className="ghost-btn" onClick={loadSample}>
-                  Load sample
-                </button>
-                <label className="ghost-btn" style={{ cursor: "pointer" }}>
-                  Upload CSV
-                  <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFileUpload} hidden />
-                </label>
-                <button type="submit" className="primary-btn" disabled={loading || !rawText.trim()}>
+                <button type="submit" className="primary-btn" style={{ width: "100%", padding: "0.65rem" }} disabled={loading || !selectedFile}>
                   {loading ? (
-                    <span className="spinner-row"><span className="spinner" /> Processing…</span>
+                    <span className="spinner-row" style={{ justifyContent: "center" }}><span className="spinner" /> Processing dataset…</span>
                   ) : (
-                    "Process"
+                    "Process Dataset"
                   )}
                 </button>
               </div>
             </form>
-
-            {/* Empty state */}
-            {!rawText.trim() && (
-              <div className="empty-state">
-                <span className="empty-icon">📋</span>
-                <p>Paste text or upload a CSV to begin.</p>
-              </div>
-            )}
-          </aside>
-
-          {/* ════ MAIN AREA ════ */}
-          <div className="main-area">
-            {results.length === 0 ? (
-              <div className="empty-full card">
-                <span className="empty-icon">🔍</span>
-                <p>Results will appear here after processing.</p>
-              </div>
-            ) : (
-              <>
-                {/* Summary cards + donut */}
-                <SummaryCards results={results} />
-
-                {/* Filter bar + Review queue + export */}
-                <div className="filter-bar card">
-                  <div className="filter-group">
-                    <button
-                      type="button"
-                      className={`toggle-btn ${reviewQueueMode ? "active" : ""}`}
-                      style={{ border: "1px solid var(--border)", padding: "0.35rem 0.75rem" }}
-                      onClick={() => { setReviewQueueMode((v) => !v); setReviewIdx(0); }}
-                    >
-                      Review queue ({results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id]).length})
-                    </button>
-                    <select
-                      className="filter-select"
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                    >
-                      <option value="all">All types</option>
-                      {allTypes.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <select
-                      className="filter-select"
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                    >
-                      <option value="all">All statuses</option>
-                      {allStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <span className="filter-count">{filtered.length} / {results.length} records</span>
-                  </div>
-                  <div className="export-group">
-                    <button className="ghost-btn" onClick={() => exportJSON(results)}>Export JSON</button>
-                    <button className="ghost-btn" onClick={() => exportCSV(results)}>Export CSV</button>
-                    <button className="ghost-btn" onClick={() => exportPDF(results)}>Export PDF</button>
-                  </div>
-                </div>
-
-                {/* Review queue (one REVIEW record at a time, question + options only) OR full list */}
-                {reviewQueueMode ? (() => {
-                  const queue = results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id] && r.clarification);
-                  if (queue.length === 0) {
-                    return (
-                      <div className="empty-full card">
-                        <p>Review queue is empty.</p>
-                      </div>
-                    );
-                  }
-                  const cur = queue[reviewIdx % queue.length];
-                  return (
-                    <div className="card" style={{ borderColor: "var(--accent)" }}>
-                      <p className="col-title" style={{ marginBottom: "0.4rem" }}>
-                        Review Queue ({(reviewIdx % queue.length) + 1} of {queue.length})
-                      </p>
-                      <p style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.5rem" }}>{cur.text}</p>
-                      <ClarifyBlock record={cur} onClarify={handleInlineClarify} onSkip={handleSkipClarify} />
-                    </div>
-                  );
-                })() : (
-                  <div className="results-list">
-                    {filtered.length === 0 ? (
-                      <div className="empty-full card">
-                        <p>No records match the current filters.</p>
-                      </div>
-                    ) : (
-                      filtered.map((r, i) => (
-                        <ResultCard
-                          key={r.id || i}
-                          r={r}
-                          idx={i}
-                          skipped={Boolean(skippedIds[r.id])}
-                          onClarify={handleInlineClarify}
-                          onSkip={handleSkipClarify}
-                          onUndo={handleUndoClarify}
-                          canUndo={Boolean(undoMap[r.id])}
-                        />
-                      ))
-                    )}
-                  </div>
-                )}
-              </>
-            )}
           </div>
+        </section>
+      ) : page === "evaluation" ? (
+        <EvaluationTab />
+      ) : (
+        <div className="main-area">
+          {/* Summary cards + donut */}
+          <SummaryCards results={results} />
+
+          {/* Filter bar + Review queue + export */}
+          <div className="filter-bar card">
+            <div className="filter-group">
+              <button
+                type="button"
+                className={`toggle-btn ${reviewQueueMode ? "active" : ""}`}
+                style={{ border: "1px solid var(--border)", padding: "0.35rem 0.75rem" }}
+                onClick={() => { setReviewQueueMode((v) => !v); setReviewIdx(0); }}
+              >
+                Review queue ({results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id]).length})
+              </button>
+              <select
+                className="filter-select"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="all">All types</option>
+                {allTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <select
+                className="filter-select"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">All statuses</option>
+                {allStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <span className="filter-count">{filtered.length} / {results.length} records</span>
+              {results.some((r) => r.clarification && r.ambiguity_type !== "none" && !r.clarified_by_user && !skippedIds[r.id]) && (
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  style={{ padding: "0.28rem 0.65rem", fontSize: "0.78rem" }}
+                  onClick={() => {
+                    const next = { ...skippedIds };
+                    results.forEach((r) => { if (r.clarification) next[r.id] = true; });
+                    setSkippedIds(next);
+                  }}
+                >
+                  Skip all questions
+                </button>
+              )}
+            </div>
+            <div className="export-group">
+              <button className="ghost-btn" onClick={() => exportJSON(results)}>Export JSON</button>
+              <button className="ghost-btn" onClick={() => exportCSV(results)}>Export CSV</button>
+              <button className="ghost-btn" onClick={() => exportPDF(results)}>Export PDF</button>
+            </div>
+          </div>
+
+          {/* Review queue (one REVIEW record at a time, question + options only) OR full list */}
+          {reviewQueueMode ? (() => {
+            const queue = results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id] && r.clarification);
+            if (queue.length === 0) {
+              return (
+                <div className="empty-full card">
+                  <p>Review queue is empty.</p>
+                </div>
+              );
+            }
+            const cur = queue[reviewIdx % queue.length];
+            return (
+              <div className="card" style={{ borderColor: "var(--accent)" }}>
+                <p className="col-title" style={{ marginBottom: "0.4rem" }}>
+                  Review Queue ({(reviewIdx % queue.length) + 1} of {queue.length})
+                </p>
+                <p style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.5rem" }}>{cur.text}</p>
+                <ClarifyBlock record={cur} onClarify={handleInlineClarify} onSkip={handleSkipClarify} />
+              </div>
+            );
+          })() : (
+            <div className="results-list">
+              {filtered.length === 0 ? (
+                <div className="empty-full card">
+                  <p>No records match the current filters.</p>
+                </div>
+              ) : (
+                filtered.map((r, i) => (
+                  <ResultCard
+                    key={r.id || i}
+                    r={r}
+                    idx={i}
+                    skipped={Boolean(skippedIds[r.id])}
+                    onClarify={handleInlineClarify}
+                    onSkip={handleSkipClarify}
+                    onUndo={handleUndoClarify}
+                    canUndo={Boolean(undoMap[r.id])}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </main>

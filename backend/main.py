@@ -1,12 +1,15 @@
+import io
+import json
 from typing import Any, Literal, Optional
 
-from fastapi import FastAPI, HTTPException
+import pandas as pd
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from clarification import RECORD_STORE, apply_inline_clarification, apply_mcq_answers, generate_mcqs
-from evaluator import run_evaluation
+from evaluator import run_evaluation_async
 from pdf_export import build_evaluation_pdf, build_resolved_pdf
 from resolver import ResolvedRecord, parse_csv_records, resolve_batch
 
@@ -82,6 +85,71 @@ async def process_records(request: ProcessRequest):
     return {"count": len(results), "results": results}
 
 
+def _extract_records_from_df(df: pd.DataFrame) -> list[str]:
+    if df.empty:
+        return []
+    col_map = {str(c).strip().lower(): c for c in df.columns}
+    target_col = next(
+        (col_map[k] for k in ("text", "query", "record", "sentence", "input") if k in col_map),
+        df.columns[0],
+    )
+    return [str(v).strip() for v in df[target_col].dropna().tolist() if str(v).strip()]
+
+
+@app.post("/process/file", response_model=ProcessResponse)
+async def process_uploaded_file(
+    file: UploadFile = File(...),
+    context: Optional[str] = Form(default=None),
+):
+    """Process an uploaded dataset file (.csv, .json, .jsonl, .xlsx, .parquet)."""
+    filename = (file.filename or "").lower()
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    items: list[str] = []
+    try:
+        if filename.endswith(".csv"):
+            items = parse_csv_records(raw.decode("utf-8", errors="replace"))
+        elif filename.endswith(".json"):
+            parsed = json.loads(raw.decode("utf-8"))
+            if isinstance(parsed, dict) and "records" in parsed:
+                parsed = parsed["records"]
+            if isinstance(parsed, list):
+                if parsed and isinstance(parsed[0], dict):
+                    items = _extract_records_from_df(pd.DataFrame(parsed))
+                else:
+                    items = [str(x).strip() for x in parsed if str(x).strip()]
+        elif filename.endswith(".jsonl"):
+            rows = [json.loads(line) for line in raw.decode("utf-8").splitlines() if line.strip()]
+            if rows and isinstance(rows[0], dict):
+                items = _extract_records_from_df(pd.DataFrame(rows))
+            else:
+                items = [str(x).strip() for x in rows if str(x).strip()]
+        elif filename.endswith(".xlsx"):
+            df = pd.read_excel(io.BytesIO(raw), engine="openpyxl")
+            items = _extract_records_from_df(df)
+        elif filename.endswith(".parquet"):
+            df = pd.read_parquet(io.BytesIO(raw), engine="pyarrow")
+            items = _extract_records_from_df(df)
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file format. Allowed: .csv, .json, .jsonl, .xlsx, .parquet",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {exc}")
+
+    if not items:
+        raise HTTPException(status_code=400, detail="No valid text records found in uploaded file.")
+
+    explicit_context = context.strip() if context and context.strip() else None
+    results = await resolve_batch(items, explicit_context=explicit_context)
+    return {"count": len(results), "results": results}
+
+
 class ClarifyInlineRequest(BaseModel):
     record_id: str
     chosen_option: str
@@ -125,9 +193,9 @@ def submit_clarification_mcqs(request: ClarifySubmitRequest):
 
 
 @app.get("/evaluate")
-def evaluate_systems():
-    """Run 3-system evaluation across the 40 gold-labeled sentences."""
-    return run_evaluation()
+async def evaluate_systems(max_rows: Optional[int] = 20, refresh: bool = False):
+    """Run live API evaluation on the held-out test set (cached unless refresh=true)."""
+    return await run_evaluation_async(max_rows=max_rows, force_refresh=refresh)
 
 
 class ExportResolvedRequest(BaseModel):
@@ -135,9 +203,9 @@ class ExportResolvedRequest(BaseModel):
 
 
 @app.get("/export/evaluation.pdf")
-def export_evaluation_pdf():
+async def export_evaluation_pdf():
     """Download the final evaluation report as a PDF."""
-    pdf_bytes = build_evaluation_pdf(run_evaluation())
+    pdf_bytes = build_evaluation_pdf(await run_evaluation_async(max_rows=20))
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

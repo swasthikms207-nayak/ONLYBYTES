@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 const FINAL_SYSTEM = {
   key: "uncertainty_resolver",
   label: "Uncertainty Resolver (spaCy + LLM)",
-  color: "#22c55e",
+  color: "#1D2D44",
 };
 
 const TYPES = [
@@ -12,10 +12,10 @@ const TYPES = [
 ];
 
 const TYPE_COLORS = {
-  lexical: "#818cf8", syntactic: "#fb923c", referential: "#34d399",
-  scope: "#f472b6", semantic: "#c084fc", pragmatic: "#facc15",
-  underspecified: "#94a3b8", ellipsis: "#2dd4bf", temporal_numeric: "#fb7185",
-  cultural_domain: "#60a5fa", none: "#4ade80",
+  lexical: "#4338ca", syntactic: "#c2410c", referential: "#15803d",
+  scope: "#be185d", semantic: "#7e22ce", pragmatic: "#b45309",
+  underspecified: "#475569", ellipsis: "#0f766e", temporal_numeric: "#be123c",
+  cultural_domain: "#1d4ed8", none: "#15803d",
 };
 
 function fmt(v) { return v == null ? "—" : v.toFixed(3); }
@@ -41,19 +41,19 @@ function LineChart({ title, data, color, xKey, yKey, xLabel, yLabel, W = 460, H 
   return (
     <div>
       {title && <p className="col-title" style={{ marginBottom: "0.5rem" }}>{title}</p>}
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--bg3)", borderRadius: 10 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10 }}>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD} y1={toY(t)} x2={W - PAD} y2={toY(t)} stroke="#27272a" strokeDasharray="4 4" />
-            <text x={PAD - 4} y={toY(t) + 4} fill="#71717a" fontSize={9} textAnchor="end">{(t * 100).toFixed(0)}</text>
-            <line x1={toX(t)} y1={PAD} x2={toX(t)} y2={H - PAD} stroke="#27272a" strokeDasharray="4 4" />
-            <text x={toX(t)} y={H - PAD + 14} fill="#71717a" fontSize={9} textAnchor="middle">{(t * 100).toFixed(0)}</text>
+            <line x1={PAD} y1={toY(t)} x2={W - PAD} y2={toY(t)} stroke="#D5C8A8" strokeDasharray="4 4" />
+            <text x={PAD - 4} y={toY(t) + 4} fill="#1D2D44" fontSize={9} textAnchor="end">{(t * 100).toFixed(0)}</text>
+            <line x1={toX(t)} y1={PAD} x2={toX(t)} y2={H - PAD} stroke="#D5C8A8" strokeDasharray="4 4" />
+            <text x={toX(t)} y={H - PAD + 14} fill="#1D2D44" fontSize={9} textAnchor="middle">{(t * 100).toFixed(0)}</text>
           </g>
         ))}
-        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#3f3f46" />
-        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#3f3f46" />
-        {xLabel && <text x={W / 2} y={H - 4} fill="#a1a1aa" fontSize={10} textAnchor="middle">{xLabel}</text>}
-        {yLabel && <text x={10} y={H / 2} fill="#a1a1aa" fontSize={10} textAnchor="middle" transform={`rotate(-90 10 ${H / 2})`}>{yLabel}</text>}
+        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#567C8D" />
+        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#567C8D" />
+        {xLabel && <text x={W / 2} y={H - 4} fill="#000000" fontSize={10} textAnchor="middle">{xLabel}</text>}
+        {yLabel && <text x={10} y={H / 2} fill="#000000" fontSize={10} textAnchor="middle" transform={`rotate(-90 10 ${H / 2})`}>{yLabel}</text>}
         {data && data.length > 0 && (
           <g>
             <polyline fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" points={pts} />
@@ -74,12 +74,12 @@ function ReliabilityDiagram({ bins, color, W = 460, H = 220, PAD = 40 }) {
   const toY = (v) => H - PAD - v * (H - 2 * PAD);
   const binW = (W - 2 * PAD) / 10 - 4;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--bg3)", borderRadius: 10 }}>
-      <line x1={toX(0)} y1={toY(0)} x2={toX(1)} y2={toY(1)} stroke="#3f3f46" strokeDasharray="6 4" />
-      <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#3f3f46" />
-      <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#3f3f46" />
-      <text x={W / 2} y={H - 4} fill="#a1a1aa" fontSize={10} textAnchor="middle">Mean Confidence</text>
-      <text x={10} y={H / 2} fill="#a1a1aa" fontSize={10} textAnchor="middle" transform={`rotate(-90 10 ${H / 2})`}>Accuracy</text>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10 }}>
+      <line x1={toX(0)} y1={toY(0)} x2={toX(1)} y2={toY(1)} stroke="#567C8D" strokeDasharray="6 4" />
+      <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#567C8D" />
+      <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#567C8D" />
+      <text x={W / 2} y={H - 4} fill="#000000" fontSize={10} textAnchor="middle">Mean Confidence</text>
+      <text x={10} y={H / 2} fill="#000000" fontSize={10} textAnchor="middle" transform={`rotate(-90 10 ${H / 2})`}>Accuracy</text>
       {(bins || []).map((b, bi) => {
         if (b.count === 0) return null;
         const x = toX(b.lo) + 2;
@@ -144,21 +144,45 @@ function FailureCases({ failures }) {
   );
 }
 
+const EVAL_CACHE_KEY = "ambiguity_resolver_eval_cache_v2";
+let memoryEvalCache = null;
+
 export default function EvaluationTab({ clarificationScore = null }) {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(() => {
+    if (memoryEvalCache) return memoryEvalCache;
+    try {
+      const saved = sessionStorage.getItem(EVAL_CACHE_KEY);
+      if (saved) {
+        memoryEvalCache = JSON.parse(saved);
+        return memoryEvalCache;
+      }
+    } catch {}
+    return null;
+  });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function runEval() {
+  function runEval(forceRefresh = false) {
+    if (!forceRefresh && memoryEvalCache) {
+      setData(memoryEvalCache);
+      return;
+    }
     setLoading(true);
     setError("");
-    fetch("/evaluate")
+    fetch(forceRefresh ? "/evaluate?refresh=true" : "/evaluate")
       .then((r) => { if (!r.ok) throw new Error("Evaluation failed"); return r.json(); })
-      .then((d) => { setData(d); setLoading(false); })
+      .then((d) => {
+        memoryEvalCache = d;
+        try { sessionStorage.setItem(EVAL_CACHE_KEY, JSON.stringify(d)); } catch {}
+        setData(d);
+        setLoading(false);
+      })
       .catch((e) => { setError(e.message); setLoading(false); });
   }
 
-  useEffect(() => { runEval(); }, []);
+  useEffect(() => {
+    if (!data) runEval(false);
+  }, []);
 
   if (loading) return (
     <div className="card" style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "2rem" }}>
@@ -176,11 +200,11 @@ export default function EvaluationTab({ clarificationScore = null }) {
 
   const summaryCards = [
     { label: "Detection F1", value: fmt(m.detection_f1), color: FINAL_SYSTEM.color },
-    { label: "Precision", value: fmt(m.detection_precision), color: "#818cf8" },
-    { label: "Recall", value: fmt(m.detection_recall), color: "#34d399" },
+    { label: "Precision", value: fmt(m.detection_precision), color: "#4338ca" },
+    { label: "Recall", value: fmt(m.detection_recall), color: "#15803d" },
     { label: "Resolution Acc", value: fmt(m.resolution_accuracy), color: FINAL_SYSTEM.color },
-    { label: "FPR (Unambig) ↓", value: fmt(m.false_positive_rate), color: "#eab308" },
-    { label: "ECE ↓", value: fmt(m.ece), color: "#38bdf8" },
+    { label: "FPR (Unambig) ↓", value: fmt(m.false_positive_rate), color: "#b45309" },
+    { label: "ECE ↓", value: fmt(m.ece), color: "#0369a1" },
   ];
 
   return (
@@ -204,14 +228,14 @@ export default function EvaluationTab({ clarificationScore = null }) {
           >
             Download PDF
           </a>
-          <button className="ghost-btn" onClick={runEval}>Re-run</button>
+          <button className="ghost-btn" onClick={() => runEval(true)}>Re-run</button>
         </div>
       </div>
 
       {/* ── Single Final Result Summary Cards ── */}
-      <div className="summary-row">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(145px, 1fr))", gap: "0.75rem" }}>
         {summaryCards.map((c) => (
-          <div className="summary-card" key={c.label} style={{ flex: 1 }}>
+          <div className="summary-card" key={c.label}>
             <span className="summary-value" style={{ color: c.color }}>{c.value}</span>
             <span className="summary-label">{c.label}</span>
           </div>
@@ -241,13 +265,13 @@ export default function EvaluationTab({ clarificationScore = null }) {
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
           <Bar label="Detection F1" value={m.detection_f1} color={FINAL_SYSTEM.color} />
-          <Bar label="Precision" value={m.detection_precision} color="#818cf8" />
-          <Bar label="Recall" value={m.detection_recall} color="#34d399" />
+          <Bar label="Precision" value={m.detection_precision} color="#4338ca" />
+          <Bar label="Recall" value={m.detection_recall} color="#15803d" />
           <Bar label="Accuracy" value={m.resolution_accuracy} color={FINAL_SYSTEM.color} />
-          <Bar label="Normal Acc" value={m.resolution_accuracy_normal} color="#38bdf8" />
-          <Bar label="Conflict Acc" value={m.resolution_accuracy_conflict} color="#eab308" />
-          <Bar label="FPR ↓" value={m.false_positive_rate} color="#ef4444" />
-          <Bar label="ECE ↓" value={m.ece} color="#ef4444" />
+          <Bar label="Normal Acc" value={m.resolution_accuracy_normal} color="#0369a1" />
+          <Bar label="Conflict Acc" value={m.resolution_accuracy_conflict} color="#b45309" />
+          <Bar label="FPR ↓" value={m.false_positive_rate} color="#b91c1c" />
+          <Bar label="ECE ↓" value={m.ece} color="#b91c1c" />
         </div>
       </div>
 
@@ -318,9 +342,11 @@ export default function EvaluationTab({ clarificationScore = null }) {
                 const pt = m.per_type?.[t] || {};
                 return (
                   <tr key={t} style={{ borderBottom: "1px solid var(--bg3)" }}>
-                    <td style={{ ...TD, display: "flex", alignItems: "center", gap: "0.45rem" }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: TYPE_COLORS[t], display: "inline-block", flexShrink: 0 }} />
-                      {t}
+                    <td style={TD}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: TYPE_COLORS[t], display: "inline-block", flexShrink: 0 }} />
+                        <span>{t}</span>
+                      </div>
                     </td>
                     <td style={TD}>{fmt(pt.precision)}</td>
                     <td style={TD}>{fmt(pt.recall)}</td>
