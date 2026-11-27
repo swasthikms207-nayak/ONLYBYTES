@@ -295,6 +295,15 @@ def get_decisions():
     return {"decisions": decisions_log}
 
 
+@app.get("/customers")
+def get_customers():
+    """Return mock customers for the Live UI."""
+    if not CUSTOMERS_FILE.exists():
+        return {"customers": []}
+    with CUSTOMERS_FILE.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 @app.get("/map")
 def get_intent_map(
     query: Optional[str] = None,
