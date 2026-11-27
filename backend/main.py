@@ -1,7 +1,8 @@
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -17,6 +18,9 @@ ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=ROOT_ENV if ROOT_ENV.exists() else None)
 
 POLICY_FILE = Path(__file__).resolve().parent / "data" / "policy.json"
+CUSTOMERS_FILE = Path(__file__).resolve().parent / "data" / "mock_customers.json"
+
+decisions_log: list[Dict[str, Any]] = []
 
 LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
 LLM_API_BASE_URL = os.getenv("LLM_API_BASE_URL", "https://api.openai.com/v1").rstrip("/")
@@ -67,6 +71,28 @@ class ClassifyRequest(BaseModel):
 class DecideRequest(BaseModel):
     analysis: IntentAnalysisResult
     clarification_count: int = Field(default=0, ge=0)
+
+
+class DecideEndpointRequest(BaseModel):
+    customer_id: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1)
+    clarification_choice: Optional[str] = None
+
+
+def load_customer(customer_id: str) -> Dict[str, Any]:
+    if not CUSTOMERS_FILE.exists():
+        raise HTTPException(status_code=404, detail="Mock customers file not found")
+    with CUSTOMERS_FILE.open("r", encoding="utf-8") as f:
+        customers = json.load(f).get("customers", [])
+    for customer in customers:
+        if customer.get("customer_id") == customer_id:
+            return customer
+    raise HTTPException(status_code=404, detail=f"Customer '{customer_id}' not found")
+
+
+def execute_mock_action(intent: str, customer_id: str) -> str:
+    """Execute a mocked backend tool action for an approved intent."""
+    return f"Success: '{intent}' action completed for customer {customer_id}."
 
 
 def load_policy() -> PolicyConfig:
@@ -180,3 +206,80 @@ def decide(request: DecideRequest):
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/decide")
+async def decide_pipeline(request: DecideEndpointRequest):
+    """Classify customer query, apply risk policy, log decision, and run mock action if ACT."""
+    customer = load_customer(request.customer_id)
+    chat_history = customer.get("chat_history", [])
+    customer_data = {k: v for k, v in customer.items() if k != "chat_history"}
+
+    effective_query = request.query
+    clarification_count = 0
+    if request.clarification_choice and request.clarification_choice.strip():
+        clarification_count = 1
+        effective_query = (
+            f"{request.query} (User selected clarification: {request.clarification_choice.strip()})"
+        )
+
+    try:
+        analysis = await classify_intent(
+            query=effective_query,
+            customer_data=customer_data,
+            chat_history=chat_history,
+        )
+        decision_res = decide_action(
+            analysis=analysis,
+            clarification_count=clarification_count,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=f"LLM provider error: {exc.response.text}",
+        ) from exc
+
+    clarification = None
+    if decision_res["decision"] == "ASK":
+        clarification = {
+            "question": decision_res["clarification_question"],
+            "options": decision_res["options"],
+        }
+
+    action_result = None
+    if decision_res["decision"] == "ACT":
+        action_result = execute_mock_action(decision_res["intent"], request.customer_id)
+
+    response_payload = {
+        "is_ambiguous": analysis["is_ambiguous"],
+        "type": analysis["ambiguity_type"],
+        "candidates": analysis["candidate_intents"],
+        "risk_tier": decision_res["risk_tier"],
+        "threshold": decision_res["threshold"],
+        "decision": decision_res["decision"],
+        "reason": decision_res["reason"],
+        "clarification": clarification,
+        "action_result": action_result,
+    }
+
+    decisions_log.append(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "customer_id": request.customer_id,
+            "query": request.query,
+            "clarification_choice": request.clarification_choice,
+            **response_payload,
+        }
+    )
+
+    return response_payload
+
+
+@app.get("/decisions")
+def get_decisions():
+    """Return all logged decisions from POST /decide calls."""
+    return {"decisions": decisions_log}
