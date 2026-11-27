@@ -6,6 +6,11 @@
     "ambiguous_queries": 48,
     "inter_annotator_agreement": 0.65
   },
+  "headline": {
+    "wrong_actions_prevented": 24,
+    "questions_asked": 66,
+    "necessary_questions": 44
+  },
   "systems": {
     "always_act": {
       "system": "always_act",
@@ -17,6 +22,46 @@
       "cost_weighted_error": 2.1375,
       "total_cost_weighted_error": 171.0,
       "expected_calibration_error": 0.1387,
+      "questions_asked": 0,
+      "necessary_questions": 0,
+      "wrong_actions": 24,
+      "failure_cases": [
+        {
+          "query": "USB-C hub ka delivery status dikhao",
+          "correct_intent": "order_status",
+          "predicted_intent": "change_address",
+          "decision": "ACT",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Where is my Noise Cancelling Headphones package?",
+          "correct_intent": "order_status",
+          "predicted_intent": "cancel_order",
+          "decision": "ACT",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "TXN_90421 ka extra paisa wapas reverse karo",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "refund_status",
+          "decision": "ACT",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+          "correct_intent": "transaction_dispute",
+          "predicted_intent": "payment_reversal",
+          "decision": "ACT",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Reverse that duplicate charge right now",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "payment_reversal",
+          "decision": "ACT",
+          "ambiguity_type": "referential"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1387,
         "bin_centers": [
@@ -79,6 +124,46 @@
       "cost_weighted_error": 0.0,
       "total_cost_weighted_error": 0.0,
       "expected_calibration_error": 0.1387,
+      "questions_asked": 80,
+      "necessary_questions": 48,
+      "wrong_actions": 0,
+      "failure_cases": [
+        {
+          "query": "USB-C hub ka delivery status dikhao",
+          "correct_intent": "order_status",
+          "predicted_intent": "change_address",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Where is my Noise Cancelling Headphones package?",
+          "correct_intent": "order_status",
+          "predicted_intent": "cancel_order",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "TXN_90421 ka extra paisa wapas reverse karo",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "refund_status",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+          "correct_intent": "transaction_dispute",
+          "predicted_intent": "payment_reversal",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Usko jaldi wapas bhejo account mein",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "account_closure",
+          "decision": "ASK",
+          "ambiguity_type": "referential"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1387,
         "bin_centers": [
@@ -141,6 +226,46 @@
       "cost_weighted_error": 0.125,
       "total_cost_weighted_error": 10.0,
       "expected_calibration_error": 0.1387,
+      "questions_asked": 63,
+      "necessary_questions": 42,
+      "wrong_actions": 1,
+      "failure_cases": [
+        {
+          "query": "USB-C hub ka delivery status dikhao",
+          "correct_intent": "order_status",
+          "predicted_intent": "change_address",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Where is my Noise Cancelling Headphones package?",
+          "correct_intent": "order_status",
+          "predicted_intent": "cancel_order",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "TXN_90421 ka extra paisa wapas reverse karo",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "refund_status",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+          "correct_intent": "transaction_dispute",
+          "predicted_intent": "payment_reversal",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Reverse that duplicate charge right now",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "payment_reversal",
+          "decision": "ACT",
+          "ambiguity_type": "referential"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1387,
         "bin_centers": [
@@ -203,6 +328,46 @@
       "cost_weighted_error": 0.0,
       "total_cost_weighted_error": 0.0,
       "expected_calibration_error": 0.1387,
+      "questions_asked": 66,
+      "necessary_questions": 44,
+      "wrong_actions": 0,
+      "failure_cases": [
+        {
+          "query": "USB-C hub ka delivery status dikhao",
+          "correct_intent": "order_status",
+          "predicted_intent": "change_address",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Where is my Noise Cancelling Headphones package?",
+          "correct_intent": "order_status",
+          "predicted_intent": "cancel_order",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "TXN_90421 ka extra paisa wapas reverse karo",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "refund_status",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+          "correct_intent": "transaction_dispute",
+          "predicted_intent": "payment_reversal",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Usko jaldi wapas bhejo account mein",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "account_closure",
+          "decision": "ASK",
+          "ambiguity_type": "referential"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1387,
         "bin_centers": [
@@ -293,6 +458,46 @@
       "cost_weighted_error": 0.0,
       "total_cost_weighted_error": 0.0,
       "expected_calibration_error": 0.1387,
+      "questions_asked": 66,
+      "necessary_questions": 44,
+      "wrong_actions": 0,
+      "failure_cases": [
+        {
+          "query": "USB-C hub ka delivery status dikhao",
+          "correct_intent": "order_status",
+          "predicted_intent": "change_address",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Where is my Noise Cancelling Headphones package?",
+          "correct_intent": "order_status",
+          "predicted_intent": "cancel_order",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "TXN_90421 ka extra paisa wapas reverse karo",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "refund_status",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+          "correct_intent": "transaction_dispute",
+          "predicted_intent": "payment_reversal",
+          "decision": "ASK",
+          "ambiguity_type": "none"
+        },
+        {
+          "query": "Usko jaldi wapas bhejo account mein",
+          "correct_intent": "payment_reversal",
+          "predicted_intent": "account_closure",
+          "decision": "ASK",
+          "ambiguity_type": "referential"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1387,
         "bin_centers": [
@@ -355,6 +560,39 @@
       "cost_weighted_error": 0.0,
       "total_cost_weighted_error": 0.0,
       "expected_calibration_error": 0.1682,
+      "questions_asked": 66,
+      "necessary_questions": 44,
+      "wrong_actions": 0,
+      "failure_cases": [
+        {
+          "query": "Block that card immediately!",
+          "correct_intent": "card_block",
+          "predicted_intent": "card_block",
+          "decision": "ACT",
+          "ambiguity_type": "referential"
+        },
+        {
+          "query": "Change it to my work location",
+          "correct_intent": "change_address",
+          "predicted_intent": "change_address",
+          "decision": "ACT",
+          "ambiguity_type": "referential"
+        },
+        {
+          "query": "Delivery ka kya scene hai?",
+          "correct_intent": "order_status",
+          "predicted_intent": "order_status",
+          "decision": "ACT",
+          "ambiguity_type": "underspecified"
+        },
+        {
+          "query": "Change address for all my active orders",
+          "correct_intent": "change_address",
+          "predicted_intent": "change_address",
+          "decision": "ACT",
+          "ambiguity_type": "scope"
+        }
+      ],
       "calibration_bins": {
         "ece": 0.1682,
         "bin_centers": [
@@ -416,5 +654,42 @@
       "cost_weighted_error": 0.0,
       "expected_calibration_error": 0.0295
     }
-  }
+  },
+  "failure_cases": [
+    {
+      "query": "USB-C hub ka delivery status dikhao",
+      "correct_intent": "order_status",
+      "predicted_intent": "change_address",
+      "decision": "ASK",
+      "ambiguity_type": "none"
+    },
+    {
+      "query": "Where is my Noise Cancelling Headphones package?",
+      "correct_intent": "order_status",
+      "predicted_intent": "cancel_order",
+      "decision": "ASK",
+      "ambiguity_type": "none"
+    },
+    {
+      "query": "TXN_90421 ka extra paisa wapas reverse karo",
+      "correct_intent": "payment_reversal",
+      "predicted_intent": "refund_status",
+      "decision": "ASK",
+      "ambiguity_type": "none"
+    },
+    {
+      "query": "Raise a chargeback for the unrecognized debit TXN_90512",
+      "correct_intent": "transaction_dispute",
+      "predicted_intent": "payment_reversal",
+      "decision": "ASK",
+      "ambiguity_type": "none"
+    },
+    {
+      "query": "Usko jaldi wapas bhejo account mein",
+      "correct_intent": "payment_reversal",
+      "predicted_intent": "account_closure",
+      "decision": "ASK",
+      "ambiguity_type": "referential"
+    }
+  ]
 }

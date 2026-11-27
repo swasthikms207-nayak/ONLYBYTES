@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ImpactPage from "./components/ImpactPage.jsx";
 import PolicyPage from "./components/PolicyPage.jsx";
 import SemanticMap from "./components/SemanticMap.jsx";
 
@@ -168,6 +169,13 @@ export default function App() {
           >
             Policy
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === "impact" ? "active" : ""}`}
+            onClick={() => setActiveTab("impact")}
+          >
+            Impact
+          </button>
         </nav>
 
         {activeTab === "live" && (
@@ -190,6 +198,8 @@ export default function App() {
 
       {activeTab === "policy" ? (
         <PolicyPage />
+      ) : activeTab === "impact" ? (
+        <ImpactPage />
       ) : (
         <>
 

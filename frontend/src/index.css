@@ -527,3 +527,49 @@ button:disabled {
   color: var(--risk-high);
   border-color: var(--risk-high);
 }
+
+.impact-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.headline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 780px) {
+  .headline-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.headline-card {
+  gap: 0.35rem;
+}
+
+.headline-num {
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.risk-low-text {
+  color: var(--risk-low);
+}
+
+.risk-medium-text {
+  color: var(--risk-medium);
+}
+
+.calibration-img {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid #27272a;
+  background: #ffffff;
+}
+
+.check-stat {
+  font-size: 0.9rem;
+}

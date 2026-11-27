@@ -8,6 +8,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from decision_engine import DecisionResult, decide_action
@@ -351,6 +352,25 @@ def save_correction(request: CorrectionRequest):
 def get_corrections():
     """Return all saved steering corrections."""
     return {"corrections": corrections_log}
+
+
+@app.get("/results")
+def get_results():
+    """Return evaluation results from backend/data/results.json."""
+    results_path = Path(__file__).resolve().parent / "data" / "results.json"
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail="results.json not found")
+    with results_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@app.get("/calibration-plot")
+def get_calibration_plot():
+    """Serve the generated calibration_plot.png image."""
+    plot_path = Path(__file__).resolve().parent / "data" / "calibration_plot.png"
+    if not plot_path.exists():
+        raise HTTPException(status_code=404, detail="calibration_plot.png not found")
+    return FileResponse(plot_path, media_type="image/png")
 
 
 @app.get("/map")

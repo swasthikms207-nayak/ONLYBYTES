@@ -160,10 +160,13 @@ def evaluate_system(
     tp = fp = fn = tn = 0
     intent_correct = 0
     clear_total = 0
+    questions_asked = 0
     unnecessary_questions = 0
+    wrong_acts = 0
     total_cost_error = 0.0
     confidences = []
     correct_flags = []
+    failure_cases = []
 
     for row, pred in zip(rows, predictions):
         gt_ambiguous = row["is_ambiguous"].strip().lower() == "true"
@@ -200,6 +203,8 @@ def evaluate_system(
             raise ValueError(f"Unknown system: {system_name}")
 
         pred_ambiguous = decision != "ACT"
+        if decision == "ASK":
+            questions_asked += 1
         if gt_ambiguous and pred_ambiguous:
             tp += 1
         elif not gt_ambiguous and pred_ambiguous:
@@ -220,8 +225,20 @@ def evaluate_system(
                 unnecessary_questions += 1
 
         if decision == "ACT" and top_intent != gt_intent:
+            wrong_acts += 1
             cost_weight = float(policies.get(gt_intent, {}).get("cost_weight", 1))
             total_cost_error += cost_weight
+
+        if (top_intent != gt_intent or (gt_ambiguous and not pred_ambiguous)) and len(failure_cases) < 5:
+            failure_cases.append(
+                {
+                    "query": row["query"],
+                    "correct_intent": gt_intent,
+                    "predicted_intent": top_intent,
+                    "decision": decision,
+                    "ambiguity_type": row["ambiguity_type"],
+                }
+            )
 
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -242,6 +259,10 @@ def evaluate_system(
         "cost_weighted_error": round(mean_cost_error, 4),
         "total_cost_weighted_error": round(total_cost_error, 4),
         "expected_calibration_error": calibration["ece"],
+        "questions_asked": questions_asked,
+        "necessary_questions": tp,
+        "wrong_actions": wrong_acts,
+        "failure_cases": failure_cases,
         "calibration_bins": calibration,
     }
 
@@ -308,6 +329,9 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
         else 0.0
     )
 
+    always_act_wrong = system_results["always_act"]["wrong_actions"]
+    risk_aware = system_results["risk_aware_margin"]
+
     results = {
         "mode": "llm" if use_llm else "embedding_fallback",
         "dataset": {
@@ -316,6 +340,11 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
             "ambiguous_queries": ambiguous_count,
             "inter_annotator_agreement": round(annotator_agree, 4),
         },
+        "headline": {
+            "wrong_actions_prevented": max(0, always_act_wrong - risk_aware["wrong_actions"]),
+            "questions_asked": risk_aware["questions_asked"],
+            "necessary_questions": risk_aware["necessary_questions"],
+        },
         "systems": system_results,
         "checks": {
             "steering_control": check_steering_control(rows),
@@ -323,6 +352,7 @@ async def run_evaluation(limit: int | None = None) -> dict[str, Any]:
             "visualizer_faithfulness": check_visualizer_faithfulness(),
         },
         "ablation": run_ablation(rows, predictions, policies),
+        "failure_cases": risk_aware["failure_cases"],
     }
 
     RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
