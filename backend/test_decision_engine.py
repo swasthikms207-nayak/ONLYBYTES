@@ -50,6 +50,19 @@ class TestDecisionEngine(unittest.TestCase):
         self.assertIsNone(res["clarification_question"])
         self.assertEqual(res["options"], [])
 
+    def test_high_reading_ambiguity_score_triggers_ask(self):
+        analysis = {
+            "is_ambiguous": True,
+            "ambiguity_type": "lexical",
+            "candidate_intents": [
+                {"intent": "order_status", "confidence": 0.70},
+                {"intent": "cancel_order", "confidence": 0.30},
+            ],
+        }
+        res = decide_action(analysis, clarification_count=0, ambiguity_score=0.45)
+        self.assertEqual(res["decision"], "ASK")
+        self.assertIn("ambiguity score", res["reason"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()

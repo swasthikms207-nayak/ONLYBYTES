@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from decision_engine import DecisionResult, decide_action
 from intent_classifier import IntentAnalysisResult, classify_intent
-from intent_embeddings import compute_ambiguity_score, compute_similarity_margin
+from intent_embeddings import compute_reading_ambiguity
 from intent_map import get_map_data, steer_query
 
 # Load environment variables from root .env (fallback to backend/.env)
@@ -247,15 +247,11 @@ async def decide_pipeline(request: DecideEndpointRequest):
             customer_data=customer_data,
             chat_history=chat_history,
         )
+        amb_metrics = compute_reading_ambiguity(analysis.get("readings", []))
         decision_res = decide_action(
             analysis=analysis,
             clarification_count=clarification_count,
-        )
-        margin_info = compute_similarity_margin(effective_query)
-        margin = margin_info["margin"]
-        ambiguity_score = compute_ambiguity_score(
-            top_llm_confidence=decision_res["confidence"],
-            margin=margin,
+            ambiguity_score=amb_metrics["score"],
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -290,8 +286,10 @@ async def decide_pipeline(request: DecideEndpointRequest):
         "reason": decision_res["reason"],
         "clarification": clarification,
         "action_result": action_result,
-        "margin": margin,
-        "ambiguity_score": ambiguity_score,
+        "score": amb_metrics["score"],
+        "entropy": amb_metrics["entropy"],
+        "divergence": amb_metrics["divergence"],
+        "ambiguity_score": amb_metrics["score"],
     }
 
     decisions_log.append(

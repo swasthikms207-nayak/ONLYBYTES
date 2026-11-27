@@ -290,8 +290,11 @@ export default function App() {
                   <span className="metric-value">{decisionData.type}</span>
                 </div>
                 <div className="metric-box">
-                  <span className="metric-label">Margin Score</span>
-                  <span className="metric-value">{decisionData.margin?.toFixed(4)}</span>
+                  <span className="metric-label">Ambiguity Score</span>
+                  <span className="metric-value">
+                    {decisionData.score?.toFixed(4)} (E:{decisionData.entropy?.toFixed(2)} · D:
+                    {decisionData.divergence?.toFixed(2)})
+                  </span>
                 </div>
                 <div className="metric-box">
                   <span className="metric-label">Risk Tier</span>

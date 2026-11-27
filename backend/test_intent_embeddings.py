@@ -8,9 +8,8 @@ import numpy as np
 
 from intent_embeddings import (
     MODEL_NAME,
-    compute_ambiguity_score,
     compute_and_cache_centroids,
-    compute_similarity_margin,
+    compute_reading_ambiguity,
     query_centroid_similarities,
 )
 
@@ -76,19 +75,26 @@ class TestIntentEmbeddings(unittest.TestCase):
                 saved = json.loads(cache_file.read_text(encoding="utf-8"))
                 self.assertEqual(saved["model_name"], MODEL_NAME)
 
-    def test_margin_and_ambiguity_score(self):
-        with patch(
-            "intent_embeddings.query_centroid_similarities",
-            return_value={"card_block": 0.42, "account_closure": 0.39},
-        ):
-            margin_info = compute_similarity_margin("Band karo")
-            self.assertAlmostEqual(margin_info["margin"], 0.03, places=4)
+    def test_reading_ambiguity_entropy_and_divergence(self):
+        clear_res = compute_reading_ambiguity(
+            [{"paraphrase": "Track my order", "probability": 1.0, "intent": "order_status"}]
+        )
+        self.assertEqual(clear_res, {"score": 0.0, "entropy": 0.0, "divergence": 0.0})
 
-        high_amb = compute_ambiguity_score(top_llm_confidence=0.55, margin=0.03)
-        low_amb = compute_ambiguity_score(top_llm_confidence=0.95, margin=0.25)
-        self.assertGreater(high_amb, low_amb)
-        self.assertGreaterEqual(low_amb, 0.0)
-        self.assertLessEqual(high_amb, 1.0)
+        fake_model = MagicMock()
+        fake_model.encode.return_value = np.array(
+            [[1.0, 0.0], [0.0, 1.0]], dtype=np.float32
+        )
+        with patch("intent_embeddings.get_model", return_value=fake_model):
+            amb_res = compute_reading_ambiguity(
+                [
+                    {"paraphrase": "Block my card", "probability": 0.5, "intent": "card_block"},
+                    {"paraphrase": "Close my account", "probability": 0.5, "intent": "account_closure"},
+                ]
+            )
+        self.assertAlmostEqual(amb_res["entropy"], 1.0, places=4)
+        self.assertAlmostEqual(amb_res["divergence"], 1.0, places=4)
+        self.assertAlmostEqual(amb_res["score"], 1.0, places=4)
 
 
 if __name__ == "__main__":

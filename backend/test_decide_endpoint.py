@@ -29,8 +29,8 @@ class TestDecideEndpoint(unittest.TestCase):
             ],
         }
         with patch("main.classify_intent", new=AsyncMock(return_value=mock_analysis)), patch(
-            "main.compute_similarity_margin",
-            return_value={"margin": 0.2, "top_intent": "order_status", "second_intent": "cancel_order"},
+            "main.compute_reading_ambiguity",
+            return_value={"score": 0.0, "entropy": 0.0, "divergence": 0.0},
         ):
             res = self.client.post(
                 "/decide",
@@ -46,8 +46,9 @@ class TestDecideEndpoint(unittest.TestCase):
         self.assertEqual(body["threshold"], 0.6)
         self.assertIsNone(body["clarification"])
         self.assertIn("Success:", body["action_result"])
-        self.assertEqual(body["margin"], 0.2)
-        self.assertIn("ambiguity_score", body)
+        self.assertEqual(body["score"], 0.0)
+        self.assertEqual(body["entropy"], 0.0)
+        self.assertEqual(body["divergence"], 0.0)
         self.assertEqual(len(decisions_log), 1)
         self.assertEqual(decisions_log[0]["customer_id"], "CUST_1001")
 
@@ -61,8 +62,8 @@ class TestDecideEndpoint(unittest.TestCase):
             ],
         }
         with patch("main.classify_intent", new=AsyncMock(return_value=ambiguous_analysis)), patch(
-            "main.compute_similarity_margin",
-            return_value={"margin": 0.02, "top_intent": "card_block", "second_intent": "account_closure"},
+            "main.compute_reading_ambiguity",
+            return_value={"score": 0.62, "entropy": 0.93, "divergence": 0.67},
         ):
             ask_res = self.client.post(
                 "/decide",

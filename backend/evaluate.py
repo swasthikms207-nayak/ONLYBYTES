@@ -16,9 +16,8 @@ from decision_engine import decide_action
 from intent_classifier import classify_intent
 from intent_embeddings import (
     _l2_normalize,
-    compute_ambiguity_score,
     compute_and_cache_centroids,
-    compute_similarity_margin,
+    compute_reading_ambiguity,
     get_model,
     query_centroid_similarities,
 )
@@ -59,8 +58,9 @@ def _embedding_fallback_analysis(query: str) -> dict[str, Any]:
         {"intent": intent, "confidence": round(float(prob), 4)}
         for intent, prob in zip(intents, probs)
     ]
-    margin_info = compute_similarity_margin(query)
-    is_amb = margin_info["margin"] < 0.06 or candidates[0]["confidence"] < 0.70
+    ranked = list(sims.values())
+    margin = round(max(0.0, ranked[0] - ranked[1]), 4) if len(ranked) > 1 else 0.0
+    is_amb = margin < 0.06 or candidates[0]["confidence"] < 0.70
     return {
         "is_ambiguous": is_amb,
         "ambiguity_type": "underspecified" if is_amb else "none",
@@ -85,17 +85,17 @@ async def predict_query(
     else:
         analysis = _embedding_fallback_analysis(query)
 
-    margin_info = compute_similarity_margin(query)
-    margin = margin_info["margin"]
+    sims = list(query_centroid_similarities(query).values())
+    margin = round(max(0.0, sims[0] - sims[1]), 4) if len(sims) > 1 else 0.0
     top = analysis["candidate_intents"][0]
-    ambiguity_score = compute_ambiguity_score(top["confidence"], margin)
+    reading_amb = compute_reading_ambiguity(analysis.get("readings", []))
 
     return {
         "analysis": analysis,
         "top_intent": top["intent"],
         "top_confidence": float(top["confidence"]),
         "margin": margin,
-        "ambiguity_score": ambiguity_score,
+        "ambiguity_score": reading_amb["score"],
     }
 
 

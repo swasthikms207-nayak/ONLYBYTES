@@ -45,12 +45,16 @@ def _load_policies(policy_path: Path = POLICY_FILE) -> dict[str, dict[str, Any]]
     return data.get("policies", {})
 
 
+AMBIGUITY_SCORE_THRESHOLD = 0.25
+
+
 def decide_action(
     analysis: dict[str, Any],
     clarification_count: int = 0,
+    ambiguity_score: Optional[float] = None,
     policy_path: Path = POLICY_FILE,
 ) -> dict[str, Any]:
-    """Decide whether to ACT, ASK, or ESCALATE based on top intent confidence vs policy threshold."""
+    """Decide whether to ACT, ASK, or ESCALATE based on top intent confidence, policy threshold, and ambiguity_score."""
     candidates = analysis.get("candidate_intents") or []
     if not candidates:
         raise ValueError("analysis must contain at least one candidate intent")
@@ -70,7 +74,11 @@ def decide_action(
     threshold = float(policy["confidence_threshold"])
     risk_tier = policy["risk_tier"]
 
-    if top_confidence >= threshold:
+    high_reading_ambiguity = (
+        ambiguity_score is not None and float(ambiguity_score) >= AMBIGUITY_SCORE_THRESHOLD
+    )
+
+    if top_confidence >= threshold and not high_reading_ambiguity:
         return DecisionResult(
             decision="ACT",
             intent=top_intent,
@@ -91,8 +99,8 @@ def decide_action(
             threshold=threshold,
             risk_tier=risk_tier,
             reason=(
-                f"Confidence ({top_confidence:.2f}) for '{top_intent}' remains below "
-                f"threshold ({threshold:.2f}) after {clarification_count} clarification."
+                f"Ambiguity remains unresolved for '{top_intent}' (confidence {top_confidence:.2f}, "
+                f"threshold {threshold:.2f}) after {clarification_count} clarification."
             ),
         ).model_dump()
 
@@ -115,16 +123,19 @@ def decide_action(
             )
         )
 
+    reason = (
+        f"Reading ambiguity score ({ambiguity_score:.2f}) exceeds {AMBIGUITY_SCORE_THRESHOLD:.2f}; asking one clarification."
+        if high_reading_ambiguity and top_confidence >= threshold
+        else f"Confidence ({top_confidence:.2f}) for '{top_intent}' is below {risk_tier}-risk threshold ({threshold:.2f}); asking one clarification."
+    )
+
     return DecisionResult(
         decision="ASK",
         intent=top_intent,
         confidence=top_confidence,
         threshold=threshold,
         risk_tier=risk_tier,
-        reason=(
-            f"Confidence ({top_confidence:.2f}) for '{top_intent}' is below "
-            f"{risk_tier}-risk threshold ({threshold:.2f}); asking one clarification."
-        ),
+        reason=reason,
         clarification_question="Just to be sure, what would you like help with?",
         options=options,
     ).model_dump()

@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 from typing import Any, Optional
 
@@ -99,37 +100,45 @@ def query_centroid_similarities(
     return dict(sorted(scores.items(), key=lambda kv: kv[1], reverse=True))
 
 
-def compute_similarity_margin(
-    query: str,
-    intents_path: Path = INTENTS_FILE,
-    cache_path: Path = CACHE_FILE,
-) -> dict[str, Any]:
-    """Return centroid similarities and the gap (margin) between the top two intents."""
-    scores = query_centroid_similarities(
-        query=query,
-        intents_path=intents_path,
-        cache_path=cache_path,
-    )
-    ranked = list(scores.items())
-    top_intent, top_sim = ranked[0] if ranked else ("", 0.0)
-    second_intent, second_sim = ranked[1] if len(ranked) > 1 else ("", 0.0)
-    margin = round(max(0.0, top_sim - second_sim), 4)
+def compute_reading_ambiguity(readings: list[dict[str, Any]]) -> dict[str, float]:
+    """Compute normalized entropy, mean pairwise cosine distance (divergence), and ambiguity_score."""
+    if not readings or len(readings) < 2:
+        return {
+            "score": 0.0,
+            "entropy": 0.0,
+            "divergence": 0.0,
+        }
+
+    probs = [max(0.0, float(r.get("probability", 0.0))) for r in readings]
+    total_p = sum(probs)
+    if total_p <= 0.0:
+        probs = [1.0 / len(readings)] * len(readings)
+    else:
+        probs = [p / total_p for p in probs]
+
+    raw_entropy = -sum(p * math.log(p) for p in probs if p > 0.0)
+    max_entropy = math.log(len(probs))
+    normalized_entropy = max(0.0, min(1.0, raw_entropy / max_entropy)) if max_entropy > 0 else 0.0
+
+    paraphrases = [str(r.get("paraphrase", "")).strip() for r in readings]
+    model = get_model()
+    vecs = np.asarray(model.encode(paraphrases, normalize_embeddings=True), dtype=np.float32)
+
+    pairwise_distances: list[float] = []
+    n = len(vecs)
+    for i in range(n):
+        vi = _l2_normalize(vecs[i])
+        for j in range(i + 1, n):
+            vj = _l2_normalize(vecs[j])
+            sim = float(np.dot(vi, vj))
+            dist = max(0.0, 1.0 - sim)
+            pairwise_distances.append(dist)
+
+    divergence = float(np.mean(pairwise_distances)) if pairwise_distances else 0.0
+    score = normalized_entropy * divergence
+
     return {
-        "top_intent": top_intent,
-        "second_intent": second_intent,
-        "margin": margin,
-        "similarities": scores,
+        "score": round(score, 4),
+        "entropy": round(normalized_entropy, 4),
+        "divergence": round(divergence, 4),
     }
-
-
-def compute_ambiguity_score(
-    top_llm_confidence: float,
-    margin: float,
-    margin_scale: float = 0.25,
-) -> float:
-    """Combine LLM uncertainty (1 - conf) and embedding margin into a [0, 1] ambiguity score."""
-    llm_uncertainty = max(0.0, min(1.0, 1.0 - float(top_llm_confidence)))
-    normalized_margin = max(0.0, min(1.0, float(margin) / margin_scale))
-    margin_ambiguity = 1.0 - normalized_margin
-    score = 0.6 * llm_uncertainty + 0.4 * margin_ambiguity
-    return round(max(0.0, min(1.0, score)), 4)
