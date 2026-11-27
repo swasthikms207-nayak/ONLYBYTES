@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from evaluator import run_evaluation
 from resolver import ResolvedRecord, parse_csv_records, resolve_batch
 
 app = FastAPI(title="Ambiguity Resolver API", version="0.1.0")
@@ -53,3 +54,9 @@ async def process_records(request: ProcessRequest):
 
     results = await resolve_batch(items)
     return {"count": len(results), "results": results}
+
+
+@app.get("/evaluate")
+def evaluate_systems():
+    """Run 3-system evaluation across the 40 gold-labeled sentences."""
+    return run_evaluation()

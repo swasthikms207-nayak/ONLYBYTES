@@ -1,4 +1,5 @@
 import { useState } from "react";
+import EvaluationTab from "./components/EvaluationTab.jsx";
 
 const SAMPLE_TEXT = [
   "Where is my order ORD_5501?",
@@ -15,6 +16,7 @@ const SAMPLE_CSV = `text
 "Close it now"`;
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState("resolver");
   const [format, setFormat] = useState("text");
   const [rawText, setRawText] = useState(SAMPLE_TEXT);
   const [results, setResults] = useState([]);
@@ -69,14 +71,35 @@ export default function App() {
 
   return (
     <main className="container">
-      <header className="header">
+      <header className="header topbar">
         <div>
           <h1>Ambiguity Resolver</h1>
           <p className="subtitle">
             Batch analyze pasted text or CSV records into structured ambiguity readings.
           </p>
         </div>
+        <nav className="tabs">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === "resolver" ? "active" : ""}`}
+            onClick={() => setActiveTab("resolver")}
+          >
+            Resolver
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === "evaluation" ? "active" : ""}`}
+            onClick={() => setActiveTab("evaluation")}
+          >
+            Evaluation
+          </button>
+        </nav>
       </header>
+
+      {activeTab === "evaluation" ? (
+        <EvaluationTab />
+      ) : (
+        <>
 
       <section className="panel">
         <div className="toolbar">
@@ -205,6 +228,8 @@ export default function App() {
             </div>
           )}
         </section>
+      )}
+        </>
       )}
     </main>
   );

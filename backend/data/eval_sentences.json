@@ -1,0 +1,402 @@
+[
+  {
+    "id": 1,
+    "category": "ambiguous",
+    "text": "Sab band kar do abhi",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "scope",
+    "gold_top_reading": "Apply the action to all active items on the account.",
+    "mfs_reading": "Block or freeze the active payment card."
+  },
+  {
+    "id": 2,
+    "category": "ambiguous",
+    "text": "Block my stuff",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "lexical",
+    "gold_top_reading": "Block or freeze the active payment card.",
+    "mfs_reading": "Block or freeze the active payment card."
+  },
+  {
+    "id": 3,
+    "category": "ambiguous",
+    "text": "Cancel everything pending",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "scope",
+    "gold_top_reading": "Apply the action to all active items on the account.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 4,
+    "category": "ambiguous",
+    "text": "Freeze it right now",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to an unspecified recent item.",
+    "mfs_reading": "Block or freeze the active payment card."
+  },
+  {
+    "id": 5,
+    "category": "ambiguous",
+    "text": "Close all active items",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "scope",
+    "gold_top_reading": "Apply the action to all active items on the account.",
+    "mfs_reading": "Permanently close the user account."
+  },
+  {
+    "id": 6,
+    "category": "ambiguous",
+    "text": "Band karo",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "lexical",
+    "gold_top_reading": "Block or freeze the active payment card.",
+    "mfs_reading": "Block or freeze the active payment card."
+  },
+  {
+    "id": 7,
+    "category": "ambiguous",
+    "text": "Help please",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "underspecified",
+    "gold_top_reading": "Request for status or assistance regarding 'Help please'.",
+    "mfs_reading": "General support inquiry."
+  },
+  {
+    "id": 8,
+    "category": "ambiguous",
+    "text": "Fix this",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to an unspecified recent item.",
+    "mfs_reading": "General support inquiry."
+  },
+  {
+    "id": 9,
+    "category": "ambiguous",
+    "text": "Saare pending rok do",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "scope",
+    "gold_top_reading": "Apply the action to all active items on the account.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 10,
+    "category": "ambiguous",
+    "text": "Check status",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "underspecified",
+    "gold_top_reading": "Request for status or assistance regarding 'Check status'.",
+    "mfs_reading": "Check the latest order status."
+  },
+  {
+    "id": 11,
+    "category": "ambiguous",
+    "text": "Reverse charge",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "lexical",
+    "gold_top_reading": "Block or freeze the active payment card.",
+    "mfs_reading": "Reverse the latest payment."
+  },
+  {
+    "id": 12,
+    "category": "ambiguous",
+    "text": "Update it",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to an unspecified recent item.",
+    "mfs_reading": "Update delivery address."
+  },
+  {
+    "id": 13,
+    "category": "ambiguous",
+    "text": "Stop both",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "scope",
+    "gold_top_reading": "Apply the action to all active items on the account.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 14,
+    "category": "ambiguous",
+    "text": "Issue here",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "underspecified",
+    "gold_top_reading": "Request for status or assistance regarding 'Issue here'.",
+    "mfs_reading": "General support inquiry."
+  },
+  {
+    "id": 15,
+    "category": "ambiguous",
+    "text": "Cancel please",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "lexical",
+    "gold_top_reading": "Block or freeze the active payment card.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 16,
+    "category": "ambiguous",
+    "text": "Send back",
+    "surrounding_context": [],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "underspecified",
+    "gold_top_reading": "Request for status or assistance regarding 'Send back'.",
+    "mfs_reading": "Check refund status."
+  },
+  {
+    "id": 17,
+    "category": "context_conflicting",
+    "text": "Cancel it before dispatch",
+    "surrounding_context": ["I ordered headphones ORD_5519 yesterday", "Please stop it now"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 18,
+    "category": "context_conflicting",
+    "text": "Close it now",
+    "surrounding_context": ["My wallet was stolen near the metro", "Someone might use my card"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Permanently close the user account."
+  },
+  {
+    "id": 19,
+    "category": "context_conflicting",
+    "text": "Isko turant wapas karo",
+    "surrounding_context": ["UPI payment TXN_90421 got debited twice"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 20,
+    "category": "context_conflicting",
+    "text": "Change that to office",
+    "surrounding_context": ["Package ORD_5519 is awaiting dispatch"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Update default billing address."
+  },
+  {
+    "id": 21,
+    "category": "context_conflicting",
+    "text": "Uska status batao",
+    "surrounding_context": ["My refund for the returned keyboard was approved"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Check the latest order status."
+  },
+  {
+    "id": 22,
+    "category": "context_conflicting",
+    "text": "Block this right away",
+    "surrounding_context": ["Unknown charge of 14500 on debit card 1194"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Permanently close the user account."
+  },
+  {
+    "id": 23,
+    "category": "context_conflicting",
+    "text": "Reverse that immediately",
+    "surrounding_context": ["Duplicate debit TXN_90421 happened on UPI"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 24,
+    "category": "context_conflicting",
+    "text": "Woh wala cancel kar do",
+    "surrounding_context": ["Ordered wrong size for Mechanical Keyboard ORD_5501"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Block or freeze the active payment card."
+  },
+  {
+    "id": 25,
+    "category": "context_conflicting",
+    "text": "Check this for me",
+    "surrounding_context": ["Refund ARN has not arrived in bank account yet"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Check the latest order status."
+  },
+  {
+    "id": 26,
+    "category": "context_conflicting",
+    "text": "Stop it right now",
+    "surrounding_context": ["Fraudulent debit TXN_90512 from Unknown Digital Store"],
+    "gold_is_ambiguous": true,
+    "gold_ambiguity_type": "referential",
+    "gold_top_reading": "Refers to the item mentioned in surrounding context.",
+    "mfs_reading": "Cancel the latest pending order."
+  },
+  {
+    "id": 27,
+    "category": "unambiguous",
+    "text": "Where is my order ORD_5501?",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Where is my order ORD_5501?",
+    "mfs_reading": "Where is my order ORD_5501?"
+  },
+  {
+    "id": 28,
+    "category": "unambiguous",
+    "text": "Block my debit card ending in 1194",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Block my debit card ending in 1194",
+    "mfs_reading": "Block my debit card ending in 1194"
+  },
+  {
+    "id": 29,
+    "category": "unambiguous",
+    "text": "Cancel my headphones order ORD_5519",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Cancel my headphones order ORD_5519",
+    "mfs_reading": "Cancel my headphones order ORD_5519"
+  },
+  {
+    "id": 30,
+    "category": "unambiguous",
+    "text": "Permanently close my OnlyBytes user account",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Permanently close my OnlyBytes user account",
+    "mfs_reading": "Permanently close my OnlyBytes user account"
+  },
+  {
+    "id": 31,
+    "category": "unambiguous",
+    "text": "Update my shipping address to Indiranagar Bengaluru",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Update my shipping address to Indiranagar Bengaluru",
+    "mfs_reading": "Update my shipping address to Indiranagar Bengaluru"
+  },
+  {
+    "id": 32,
+    "category": "unambiguous",
+    "text": "When will my Mechanical Keyboard arrive?",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "When will my Mechanical Keyboard arrive?",
+    "mfs_reading": "When will my Mechanical Keyboard arrive?"
+  },
+  {
+    "id": 33,
+    "category": "unambiguous",
+    "text": "Reverse the duplicate UPI payment TXN_90421",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Reverse the duplicate UPI payment TXN_90421",
+    "mfs_reading": "Reverse the duplicate UPI payment TXN_90421"
+  },
+  {
+    "id": 34,
+    "category": "unambiguous",
+    "text": "Dispute the unauthorized transaction TXN_90512",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Dispute the unauthorized transaction TXN_90512",
+    "mfs_reading": "Dispute the unauthorized transaction TXN_90512"
+  },
+  {
+    "id": 35,
+    "category": "unambiguous",
+    "text": "Has my refund for the cancelled mouse been credited?",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Has my refund for the cancelled mouse been credited?",
+    "mfs_reading": "Has my refund for the cancelled mouse been credited?"
+  },
+  {
+    "id": 36,
+    "category": "unambiguous",
+    "text": "Mera credit card 4821 turant block kar do",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Mera credit card 4821 turant block kar do",
+    "mfs_reading": "Mera credit card 4821 turant block kar do"
+  },
+  {
+    "id": 37,
+    "category": "unambiguous",
+    "text": "Track shipment for order ORD_5490",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Track shipment for order ORD_5490",
+    "mfs_reading": "Track shipment for order ORD_5490"
+  },
+  {
+    "id": 38,
+    "category": "unambiguous",
+    "text": "Mera delivery address Mumbai Churchgate update karo",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Mera delivery address Mumbai Churchgate update karo",
+    "mfs_reading": "Mera delivery address Mumbai Churchgate update karo"
+  },
+  {
+    "id": 39,
+    "category": "unambiguous",
+    "text": "Freeze my Visa debit card due to theft",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Freeze my Visa debit card due to theft",
+    "mfs_reading": "Freeze my Visa debit card due to theft"
+  },
+  {
+    "id": 40,
+    "category": "unambiguous",
+    "text": "Please share the courier tracking link for ORD_5501",
+    "surrounding_context": [],
+    "gold_is_ambiguous": false,
+    "gold_ambiguity_type": "none",
+    "gold_top_reading": "Please share the courier tracking link for ORD_5501",
+    "mfs_reading": "Please share the courier tracking link for ORD_5501"
+  }
+]
