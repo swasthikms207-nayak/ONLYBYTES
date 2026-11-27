@@ -89,14 +89,17 @@ class TestIntentMap(unittest.TestCase):
         client = TestClient(app)
         mock_steer = {
             "query": "Sab band karo",
-            "source_intent": "account_closure",
-            "target_intent": "card_block",
+            "target_reading": "Block my debit card immediately.",
             "alpha": 0.5,
             "old_point": {"x": 0.1, "y": 0.2},
             "new_point": {"x": 0.3, "y": 0.1},
-            "probabilities": [
-                {"intent": "card_block", "probability": 0.7},
-                {"intent": "account_closure", "probability": 0.3},
+            "before_similarities": [
+                {"paraphrase": "Block my debit card immediately.", "intent": "card_block", "similarity": 0.45},
+                {"paraphrase": "Close my account.", "intent": "account_closure", "similarity": 0.40},
+            ],
+            "similarities": [
+                {"paraphrase": "Block my debit card immediately.", "intent": "card_block", "similarity": 0.85},
+                {"paraphrase": "Close my account.", "intent": "account_closure", "similarity": 0.30},
             ],
         }
         with patch("main.steer_query", return_value=mock_steer):
@@ -104,13 +107,17 @@ class TestIntentMap(unittest.TestCase):
                 "/steer",
                 json={
                     "query": "Sab band karo",
-                    "source_intent": "account_closure",
-                    "target_intent": "card_block",
+                    "target_reading": "Block my debit card immediately.",
                     "alpha": 0.5,
+                    "readings": [
+                        {"paraphrase": "Block my debit card immediately.", "intent": "card_block"},
+                        {"paraphrase": "Close my account.", "intent": "account_closure"},
+                    ],
                 },
             )
         self.assertEqual(steer_res.status_code, 200)
         self.assertEqual(steer_res.json()["new_point"], {"x": 0.3, "y": 0.1})
+        self.assertEqual(len(steer_res.json()["similarities"]), 2)
 
         corr_res = client.post(
             "/corrections",

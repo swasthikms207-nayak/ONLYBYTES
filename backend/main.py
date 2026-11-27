@@ -86,9 +86,9 @@ class DecideEndpointRequest(BaseModel):
 
 class SteerRequest(BaseModel):
     query: str = Field(..., min_length=1)
-    source_intent: str = Field(..., min_length=1)
-    target_intent: str = Field(..., min_length=1)
+    target_reading: str = Field(..., min_length=1)
     alpha: float = Field(default=0.5, ge=-1.0, le=2.0)
+    readings: Optional[list[Any]] = None
 
 
 class CorrectionRequest(BaseModel):
@@ -288,11 +288,34 @@ async def decide_pipeline(request: DecideEndpointRequest):
     if decision_res["decision"] == "ACT":
         action_result = execute_mock_action(decision_res["intent"], request.customer_id)
 
+    before_similarities = None
+    after_similarities = None
+    readings_list = analysis.get("readings", [])
+    if readings_list and (filtered["resolved_by_context"] or clarification_count > 0):
+        target_reading = readings_list[0]["paraphrase"]
+        if clarification_count > 0 and request.clarification_choice:
+            choice_lower = request.clarification_choice.strip().lower()
+            for r in readings_list:
+                if (
+                    str(r.get("intent", "")).lower() == choice_lower
+                    or str(r.get("paraphrase", "")).lower() == choice_lower
+                ):
+                    target_reading = r["paraphrase"]
+                    break
+        steer_res = steer_query(
+            query=request.query,
+            target_reading=target_reading,
+            alpha=0.5,
+            readings=readings_list,
+        )
+        before_similarities = steer_res["before_similarities"]
+        after_similarities = steer_res["similarities"]
+
     response_payload = {
         "is_ambiguous": analysis["is_ambiguous"],
         "type": analysis["ambiguity_type"],
         "ambiguous_spans": analysis.get("ambiguous_spans", []),
-        "readings": analysis.get("readings", []),
+        "readings": readings_list,
         "candidates": analysis["candidate_intents"],
         "risk_tier": decision_res["risk_tier"],
         "threshold": decision_res["threshold"],
@@ -306,6 +329,8 @@ async def decide_pipeline(request: DecideEndpointRequest):
         "ambiguity_score": amb_metrics["score"],
         "context_used": filtered["context_used"],
         "resolved_by_context": filtered["resolved_by_context"],
+        "before_similarities": before_similarities,
+        "after_similarities": after_similarities,
     }
 
     decisions_log.append(
@@ -338,13 +363,13 @@ def get_customers():
 
 @app.post("/steer")
 def steer(request: SteerRequest):
-    """Steer a query embedding from source_intent toward target_intent and return 2D coords + probabilities."""
+    """Steer a query embedding toward target_reading and return similarities to every reading."""
     try:
         return steer_query(
             query=request.query,
-            source_intent=request.source_intent,
-            target_intent=request.target_intent,
+            target_reading=request.target_reading,
             alpha=request.alpha,
+            readings=request.readings,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

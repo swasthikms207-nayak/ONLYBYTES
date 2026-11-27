@@ -57,15 +57,24 @@ class TestDecideEndpoint(unittest.TestCase):
         ambiguous_analysis = {
             "is_ambiguous": True,
             "ambiguity_type": "lexical",
+            "ambiguous_spans": [{"text": "Sab band", "type": "lexical", "reason": "Unclear"}],
+            "readings": [
+                {"paraphrase": "Block my debit card.", "probability": 0.65, "intent": "card_block"},
+                {"paraphrase": "Close my account.", "probability": 0.35, "intent": "account_closure"},
+            ],
             "candidate_intents": [
                 {"intent": "card_block", "confidence": 0.65},
                 {"intent": "account_closure", "confidence": 0.35},
             ],
         }
+        mock_steer = {
+            "before_similarities": [{"paraphrase": "Block my debit card.", "intent": "card_block", "similarity": 0.5}],
+            "similarities": [{"paraphrase": "Block my debit card.", "intent": "card_block", "similarity": 0.85}],
+        }
         with patch("main.classify_intent", new=AsyncMock(return_value=ambiguous_analysis)), patch(
             "main.compute_reading_ambiguity",
             return_value={"score": 0.62, "entropy": 0.93, "divergence": 0.67},
-        ):
+        ), patch("main.steer_query", return_value=mock_steer):
             ask_res = self.client.post(
                 "/decide",
                 json={"customer_id": "CUST_1003", "query": "Sab band karo"},
@@ -74,6 +83,7 @@ class TestDecideEndpoint(unittest.TestCase):
             ask_body = ask_res.json()
             self.assertEqual(ask_body["decision"], "ASK")
             self.assertIsNotNone(ask_body["clarification"])
+            self.assertIsNone(ask_body["before_similarities"])
             self.assertEqual(len(ask_body["clarification"]["options"]), 2)
             self.assertIsNone(ask_body["action_result"])
 
@@ -82,13 +92,15 @@ class TestDecideEndpoint(unittest.TestCase):
                 json={
                     "customer_id": "CUST_1003",
                     "query": "Sab band karo",
-                    "clarification_choice": "Block card",
+                    "clarification_choice": "card_block",
                 },
             )
             self.assertEqual(esc_res.status_code, 200)
             esc_body = esc_res.json()
             self.assertEqual(esc_body["decision"], "ESCALATE")
             self.assertIsNone(esc_body["clarification"])
+            self.assertIsNotNone(esc_body["before_similarities"])
+            self.assertIsNotNone(esc_body["after_similarities"])
 
         self.assertEqual(len(decisions_log), 2)
 

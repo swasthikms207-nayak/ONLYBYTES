@@ -154,58 +154,84 @@ def get_map_data(
 
 def steer_query(
     query: str,
-    source_intent: str,
-    target_intent: str,
+    target_reading: str,
     alpha: float,
+    readings: Optional[list[Any]] = None,
     intents_path: Path = INTENTS_FILE,
     cache_path: Path = MAP_CACHE_FILE,
 ) -> dict[str, Any]:
-    """Steer a query embedding from source_intent toward target_intent by alpha and return 2D points + probabilities."""
+    """Steer query_embedding toward target_reading_embedding by alpha and return similarities to every reading."""
     if not query or not query.strip():
         raise ValueError("query must be non-empty")
-
-    centroids = compute_and_cache_centroids(intents_path=intents_path)
-    if source_intent not in centroids:
-        raise ValueError(f"Unknown source_intent: {source_intent}")
-    if target_intent not in centroids:
-        raise ValueError(f"Unknown target_intent: {target_intent}")
+    if not target_reading or not target_reading.strip():
+        raise ValueError("target_reading must be non-empty")
 
     projection = fit_or_load_projection(intents_path=intents_path, cache_path=cache_path)
     mean = np.asarray(projection["mean"], dtype=np.float32)
     components = np.asarray(projection["components"], dtype=np.float32)
 
     model = get_model()
-    vec_before = _l2_normalize(
-        np.asarray(model.encode([query.strip()], normalize_embeddings=True)[0], dtype=np.float32)
+    clean_query = query.strip()
+    clean_target = target_reading.strip()
+
+    q_vec = _l2_normalize(
+        np.asarray(model.encode([clean_query], normalize_embeddings=True)[0], dtype=np.float32)
     )
-    delta = centroids[target_intent] - centroids[source_intent]
-    vec_after = _l2_normalize(vec_before + float(alpha) * delta)
-
-    xy_before = _project_array(vec_before, mean, components)
-    xy_after = _project_array(vec_after, mean, components)
-
-    # Softmax over cosine similarities (temperature=10) for updated intent probabilities
-    intent_names = list(centroids.keys())
-    sims = np.array([float(np.dot(vec_after, centroids[name])) for name in intent_names])
-    scaled = sims * 10.0
-    exp_scores = np.exp(scaled - np.max(scaled))
-    probs = exp_scores / np.sum(exp_scores)
-
-    probabilities = sorted(
-        [
-            {"intent": name, "probability": round(float(prob), 4)}
-            for name, prob in zip(intent_names, probs)
-        ],
-        key=lambda item: item["probability"],
-        reverse=True,
+    t_vec = _l2_normalize(
+        np.asarray(model.encode([clean_target], normalize_embeddings=True)[0], dtype=np.float32)
     )
+    steered_vec = _l2_normalize(q_vec + float(alpha) * (t_vec - q_vec))
+
+    xy_before = _project_array(q_vec, mean, components)
+    xy_after = _project_array(steered_vec, mean, components)
+
+    reading_items: list[dict[str, Any]] = []
+    if readings:
+        for r in readings:
+            if isinstance(r, dict):
+                reading_items.append(
+                    {
+                        "paraphrase": str(r.get("paraphrase", "")).strip(),
+                        "intent": r.get("intent"),
+                    }
+                )
+            else:
+                reading_items.append({"paraphrase": str(r).strip(), "intent": None})
+    else:
+        reading_items.append({"paraphrase": clean_target, "intent": None})
+
+    paraphrases = [item["paraphrase"] for item in reading_items if item["paraphrase"]]
+    r_vecs = np.asarray(model.encode(paraphrases, normalize_embeddings=True), dtype=np.float32)
+
+    before_similarities = []
+    after_similarities = []
+    for item, r_vec in zip(reading_items, r_vecs):
+        rv = _l2_normalize(r_vec)
+        before_sim = round(float(np.dot(q_vec, rv)), 4)
+        after_sim = round(float(np.dot(steered_vec, rv)), 4)
+        before_similarities.append(
+            {
+                "paraphrase": item["paraphrase"],
+                "intent": item["intent"],
+                "similarity": before_sim,
+            }
+        )
+        after_similarities.append(
+            {
+                "paraphrase": item["paraphrase"],
+                "intent": item["intent"],
+                "similarity": after_sim,
+            }
+        )
+
+    after_similarities.sort(key=lambda x: x["similarity"], reverse=True)
 
     return {
-        "query": query.strip(),
-        "source_intent": source_intent,
-        "target_intent": target_intent,
+        "query": clean_query,
+        "target_reading": clean_target,
         "alpha": float(alpha),
         "old_point": {"x": round(float(xy_before[0]), 4), "y": round(float(xy_before[1]), 4)},
         "new_point": {"x": round(float(xy_after[0]), 4), "y": round(float(xy_after[1]), 4)},
-        "probabilities": probabilities,
+        "before_similarities": before_similarities,
+        "similarities": after_similarities,
     }

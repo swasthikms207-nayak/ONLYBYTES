@@ -1,31 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 
-const ALL_INTENTS = [
-  "payment_reversal",
-  "cancel_order",
-  "refund_status",
-  "account_closure",
-  "change_address",
-  "card_block",
-  "order_status",
-  "transaction_dispute",
-];
-
 const SVG_W = 520;
 const SVG_H = 260;
 const PAD = 24;
 
-export default function SemanticMap({ currentQuery, candidates }) {
+export default function SemanticMap({ currentQuery, readings }) {
   const [points, setPoints] = useState([]);
   const [queryPoint, setQueryPoint] = useState(null);
-  const [sourceIntent, setSourceIntent] = useState("account_closure");
-  const [targetIntent, setTargetIntent] = useState("card_block");
+  const [targetReading, setTargetReading] = useState("");
   const [alpha, setAlpha] = useState(0);
   const [steerResult, setSteerResult] = useState(null);
   const [saveMessage, setSaveMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Load static 2D clusters once
   useEffect(() => {
     fetch("/map")
       .then((res) => res.json())
@@ -33,7 +20,6 @@ export default function SemanticMap({ currentQuery, candidates }) {
       .catch(() => {});
   }, []);
 
-  // Update highlighted query position & default source/target when currentQuery changes
   useEffect(() => {
     setSteerResult(null);
     setAlpha(0);
@@ -41,21 +27,21 @@ export default function SemanticMap({ currentQuery, candidates }) {
 
     if (!currentQuery) {
       setQueryPoint(null);
+      setTargetReading("");
       return;
     }
 
-    if (candidates?.length >= 1) {
-      setSourceIntent(candidates[0].intent);
-      if (candidates.length >= 2) {
-        setTargetIntent(candidates[1].intent);
-      }
+    if (readings?.length > 0) {
+      setTargetReading(readings[0].paraphrase);
+    } else {
+      setTargetReading(currentQuery);
     }
 
     fetch(`/map?query=${encodeURIComponent(currentQuery)}`)
       .then((res) => res.json())
       .then((data) => setQueryPoint(data.query_before || null))
       .catch(() => {});
-  }, [currentQuery, candidates]);
+  }, [currentQuery, readings]);
 
   const bounds = useMemo(() => {
     const allX = points.map((p) => p.x);
@@ -94,7 +80,7 @@ export default function SemanticMap({ currentQuery, candidates }) {
   async function handleAlphaChange(nextAlpha) {
     setAlpha(nextAlpha);
     setSaveMessage("");
-    if (!currentQuery) return;
+    if (!currentQuery || !targetReading) return;
 
     try {
       const res = await fetch("/steer", {
@@ -102,9 +88,9 @@ export default function SemanticMap({ currentQuery, candidates }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: currentQuery,
-          source_intent: sourceIntent,
-          target_intent: targetIntent,
+          target_reading: targetReading,
           alpha: nextAlpha,
+          readings: readings || [],
         }),
       });
       if (!res.ok) return;
@@ -116,18 +102,18 @@ export default function SemanticMap({ currentQuery, candidates }) {
   }
 
   async function handleSaveCorrection() {
-    if (!currentQuery || saving) return;
+    if (!currentQuery || !targetReading || saving) return;
     setSaving(true);
     setSaveMessage("");
 
+    const matched = (readings || []).find((r) => r.paraphrase === targetReading);
     try {
       const res = await fetch("/corrections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: currentQuery,
-          source_intent: sourceIntent,
-          target_intent: targetIntent,
+          target_intent: matched?.intent || targetReading,
           alpha,
         }),
       });
@@ -217,27 +203,15 @@ export default function SemanticMap({ currentQuery, candidates }) {
       <div className="steer-controls">
         <div className="steer-dropdowns">
           <label>
-            Source
+            Target Reading
             <select
-              value={sourceIntent}
-              onChange={(e) => setSourceIntent(e.target.value)}
+              value={targetReading}
+              disabled={!currentQuery || !readings?.length}
+              onChange={(e) => setTargetReading(e.target.value)}
             >
-              {ALL_INTENTS.map((intent) => (
-                <option key={intent} value={intent}>
-                  {intent}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Target
-            <select
-              value={targetIntent}
-              onChange={(e) => setTargetIntent(e.target.value)}
-            >
-              {ALL_INTENTS.map((intent) => (
-                <option key={intent} value={intent}>
-                  {intent}
+              {(readings || []).map((r, i) => (
+                <option key={i} value={r.paraphrase}>
+                  {r.paraphrase}
                 </option>
               ))}
             </select>
@@ -253,7 +227,7 @@ export default function SemanticMap({ currentQuery, candidates }) {
             max="1"
             step="0.05"
             value={alpha}
-            disabled={!currentQuery}
+            disabled={!currentQuery || !targetReading}
             onChange={(e) => handleAlphaChange(parseFloat(e.target.value))}
           />
           <button
@@ -268,14 +242,14 @@ export default function SemanticMap({ currentQuery, candidates }) {
         </div>
       </div>
 
-      {steerResult?.probabilities && (
+      {steerResult?.similarities && (
         <div className="steer-probs">
-          <span className="metric-label">Updated Intent Probabilities</span>
+          <span className="metric-label">Steered Reading Similarities</span>
           <div className="probs-grid">
-            {steerResult.probabilities.slice(0, 4).map((item) => (
-              <div key={item.intent} className="prob-chip">
-                <span>{item.intent}</span>
-                <strong>{Math.round(item.probability * 100)}%</strong>
+            {steerResult.similarities.map((item, idx) => (
+              <div key={idx} className="prob-chip">
+                <span>{item.intent || item.paraphrase}</span>
+                <strong>{item.similarity.toFixed(3)}</strong>
               </div>
             ))}
           </div>
