@@ -2,9 +2,12 @@ from typing import Any, Literal, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from clarification import RECORD_STORE, apply_inline_clarification, apply_mcq_answers, generate_mcqs
 from evaluator import run_evaluation
+from pdf_export import build_evaluation_pdf, build_resolved_pdf
 from resolver import ResolvedRecord, parse_csv_records, resolve_batch
 
 app = FastAPI(title="Ambiguity Resolver API", version="0.2.0")
@@ -79,7 +82,77 @@ async def process_records(request: ProcessRequest):
     return {"count": len(results), "results": results}
 
 
+class ClarifyInlineRequest(BaseModel):
+    record_id: str
+    chosen_option: str
+    custom_text: Optional[str] = None
+    record: Optional[dict[str, Any]] = None
+
+
+@app.post("/clarify")
+def clarify_record(request: ClarifyInlineRequest):
+    """Apply user's chosen clarification option to a record and return the updated record."""
+    rec = RECORD_STORE.get(request.record_id) or request.record
+    if not rec:
+        raise HTTPException(status_code=404, detail=f"Record '{request.record_id}' not found.")
+    return apply_inline_clarification(
+        rec,
+        chosen_option=request.chosen_option,
+        custom_text=request.custom_text,
+    )
+
+
+class ClarifyMcqRequest(BaseModel):
+    results: list[dict[str, Any]]
+    max_questions: int = Field(default=5, ge=1, le=5)
+
+
+class ClarifySubmitRequest(BaseModel):
+    results: list[dict[str, Any]]
+    answers: list[dict[str, Any]]
+
+
+@app.post("/clarify/mcqs")
+def get_clarification_mcqs(request: ClarifyMcqRequest):
+    """Generate 4-5 MCQs related to the processed batch records."""
+    return {"mcqs": generate_mcqs(request.results, max_questions=request.max_questions)}
+
+
+@app.post("/clarify/submit")
+def submit_clarification_mcqs(request: ClarifySubmitRequest):
+    """Apply user MCQ answers to update resolutions and compute clarification evaluation scores."""
+    return apply_mcq_answers(request.results, request.answers)
+
+
 @app.get("/evaluate")
 def evaluate_systems():
     """Run 3-system evaluation across the 40 gold-labeled sentences."""
     return run_evaluation()
+
+
+class ExportResolvedRequest(BaseModel):
+    results: list[dict[str, Any]]
+
+
+@app.get("/export/evaluation.pdf")
+def export_evaluation_pdf():
+    """Download the final evaluation report as a PDF."""
+    pdf_bytes = build_evaluation_pdf(run_evaluation())
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="evaluation_results.pdf"'},
+    )
+
+
+@app.post("/export/resolved.pdf")
+def export_resolved_pdf(request: ExportResolvedRequest):
+    """Download resolved text records as a PDF."""
+    if not request.results:
+        raise HTTPException(status_code=400, detail="No resolved records provided.")
+    pdf_bytes = build_resolved_pdf(request.results)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="resolved_results.pdf"'},
+    )

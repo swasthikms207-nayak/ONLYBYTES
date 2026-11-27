@@ -17,15 +17,15 @@ class TestResolver(unittest.TestCase):
         self.assertEqual(route_record(0.40, conflict=False), "REVIEW")
 
     def test_parse_csv_with_header(self):
-        csv_data = 'text,note\n"Block my card",high\n"Sab band karo",ambiguous\n'
-        self.assertEqual(parse_csv_records(csv_data), ["Block my card", "Sab band karo"])
+        csv_data = 'text,note\n"Block my card",high\n"Cancel all items",ambiguous\n'
+        self.assertEqual(parse_csv_records(csv_data), ["Block my card", "Cancel all items"])
 
     def test_resolve_batch_mock_fallback(self):
         with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here"}):
             out = asyncio.run(
                 resolve_batch([
                     "Where is my order ORD_5501?",
-                    "Sab band kar do",
+                    "Cancel all active items",
                     "Cancel it now",
                 ])
             )
@@ -56,7 +56,7 @@ class TestResolver(unittest.TestCase):
             "alternatives": [{"reading": "Block card", "probability": 0.4}],
             "top_probability": 0.6,
         }
-        # First record ("Band karo"): 1 alone + 5 context samples
+        # First record ("Close it"): 1 alone + 5 context samples
         # Second record ("My card was stolen"): 1 alone + 5 context samples (clear)
         clear_payload = {
             "ambiguity_type": "none",
@@ -93,11 +93,11 @@ class TestResolver(unittest.TestCase):
         with patch.dict("os.environ", {"LLM_API_KEY": "sk-test-key"}), patch(
             "resolver.httpx.AsyncClient", return_value=mock_client
         ):
-            out = asyncio.run(resolve_batch(["Band karo", "My card was stolen"]))
+            out = asyncio.run(resolve_batch(["Close it", "My card was stolen"]))
 
         self.assertEqual(len(out), 2)
         first = out[0]
-        self.assertEqual(first["text"], "Band karo")
+        self.assertEqual(first["text"], "Close it")
         self.assertTrue(first["conflict"])
         self.assertAlmostEqual(first["disagreement"], 0.2, places=4)
         self.assertEqual(first["status"], "REVIEW")
@@ -117,7 +117,7 @@ class TestResolver(unittest.TestCase):
         with patch.dict("os.environ", {"LLM_API_KEY": "your_llm_api_key_here"}):
             res = client.post(
                 "/process",
-                json={"raw_text": "Block my card\nSab band karo", "format": "text"},
+                json={"raw_text": "Block my card\nCancel all items", "format": "text"},
             )
             self.assertEqual(res.status_code, 200)
             self.assertEqual(res.json()["count"], 2)

@@ -18,7 +18,7 @@ class TestRewrite(unittest.TestCase):
 
     def test_low_confidence_outputs_both_and_marks_assumed(self):
         out = rewrite_sentence(
-            text="Sab band kar do",
+            text="Cancel all active items",
             ambiguity_type="scope",
             top_reading="Apply the action to all active items on the account.",
             alternatives=[{"reading": "Apply only to the most recent item.", "probability": 0.32}],

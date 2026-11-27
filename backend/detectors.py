@@ -80,7 +80,7 @@ _SPACY_TO_WN_POS = {
 }
 
 _LEXICAL_TRAP_WORDS = {
-    "bank", "bat", "table", "charge", "close", "block", "band", "cancel",
+    "bank", "bat", "table", "charge", "close", "block", "cancel",
     "bear", "bark", "light", "spring", "match", "plant", "crane", "pitch",
     "seal", "scale", "tie", "fair", "fine", "left", "right", "ring", "rock",
     "jam", "sink", "watch", "file", "park", "book", "motion",

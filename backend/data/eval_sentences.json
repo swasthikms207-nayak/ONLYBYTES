@@ -2,7 +2,7 @@
   {
     "id": 1,
     "category": "ambiguous",
-    "text": "Sab band kar do abhi",
+    "text": "Cancel all active items now",
     "surrounding_context": [],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "scope",
@@ -52,7 +52,7 @@
   {
     "id": 6,
     "category": "ambiguous",
-    "text": "Band karo",
+    "text": "Close now",
     "surrounding_context": [],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "lexical",
@@ -82,7 +82,7 @@
   {
     "id": 9,
     "category": "ambiguous",
-    "text": "Saare pending rok do",
+    "text": "Stop all pending items",
     "surrounding_context": [],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "scope",
@@ -182,7 +182,7 @@
   {
     "id": 19,
     "category": "context_conflicting",
-    "text": "Isko turant wapas karo",
+    "text": "Refund it right away",
     "surrounding_context": ["UPI payment TXN_90421 got debited twice"],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "referential",
@@ -202,7 +202,7 @@
   {
     "id": 21,
     "category": "context_conflicting",
-    "text": "Uska status batao",
+    "text": "Check its status now",
     "surrounding_context": ["My refund for the returned keyboard was approved"],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "referential",
@@ -232,7 +232,7 @@
   {
     "id": 24,
     "category": "context_conflicting",
-    "text": "Woh wala cancel kar do",
+    "text": "Cancel that order now",
     "surrounding_context": ["Ordered wrong size for Mechanical Keyboard ORD_5501"],
     "gold_is_ambiguous": true,
     "gold_ambiguity_type": "referential",
@@ -352,12 +352,12 @@
   {
     "id": 36,
     "category": "unambiguous",
-    "text": "Mera credit card 4821 turant block kar do",
+    "text": "Immediately block my credit card ending in 4821",
     "surrounding_context": [],
     "gold_is_ambiguous": false,
     "gold_ambiguity_type": "none",
-    "gold_top_reading": "Mera credit card 4821 turant block kar do",
-    "mfs_reading": "Mera credit card 4821 turant block kar do"
+    "gold_top_reading": "Immediately block my credit card ending in 4821",
+    "mfs_reading": "Immediately block my credit card ending in 4821"
   },
   {
     "id": 37,
@@ -372,12 +372,12 @@
   {
     "id": 38,
     "category": "unambiguous",
-    "text": "Mera delivery address Mumbai Churchgate update karo",
+    "text": "Update my delivery address to Mumbai Churchgate",
     "surrounding_context": [],
     "gold_is_ambiguous": false,
     "gold_ambiguity_type": "none",
-    "gold_top_reading": "Mera delivery address Mumbai Churchgate update karo",
-    "mfs_reading": "Mera delivery address Mumbai Churchgate update karo"
+    "gold_top_reading": "Update my delivery address to Mumbai Churchgate",
+    "mfs_reading": "Update my delivery address to Mumbai Churchgate"
   },
   {
     "id": 39,

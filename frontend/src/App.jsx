@@ -5,12 +5,12 @@ import EvaluationTab from "./components/EvaluationTab.jsx";
 const SAMPLES = {
   text: [
     "Where is my order ORD_5501?",
-    "Sab band kar do abhi",
+    "Cancel all active items now",
     "Cancel it before dispatch",
     "Block my card",
     "Help please",
   ].join("\n"),
-  csv: `text\n"Where is my order ORD_5501?"\n"Sab band kar do abhi"\n"Cancel it before dispatch"\n"Close it now"`,
+  csv: `text\n"Where is my order ORD_5501?"\n"Cancel all active items now"\n"Cancel it before dispatch"\n"Close it now"`,
   context:
     "Customer last ordered item ORD_5501 on Nov 20. Order is pending dispatch.",
 };
@@ -111,17 +111,110 @@ function ProbBar({ reading, probability, isTop, conflict }) {
   );
 }
 
+/* ── Inline Clarify Block ────────────────────────────────────────── */
+function ClarifyBlock({ record, onClarify, onSkip }) {
+  const clar = record.clarification;
+  const [otherMode, setOtherMode] = useState(false);
+  const [customText, setCustomText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!clar) return null;
+
+  async function choose(opt) {
+    if (opt.is_other) {
+      setOtherMode(true);
+      return;
+    }
+    setBusy(true);
+    await onClarify(record, opt.reading, null);
+    setBusy(false);
+  }
+
+  async function submitOther(e) {
+    e.preventDefault();
+    if (!customText.trim()) return;
+    setBusy(true);
+    await onClarify(record, "__other__", customText.trim());
+    setBusy(false);
+  }
+
+  return (
+    <div style={{ marginTop: "0.75rem", padding: "0.85rem", background: "var(--bg)", border: "1px solid var(--accent)", borderRadius: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+        <span className="col-title" style={{ color: "var(--accent)" }}>Clarify</span>
+        <button type="button" className="ghost-btn" style={{ padding: "0.2rem 0.6rem", fontSize: "0.76rem" }} onClick={() => onSkip(record.id)} disabled={busy}>
+          Skip
+        </button>
+      </div>
+      <p style={{ fontSize: "0.86rem", fontWeight: 600, marginBottom: "0.55rem" }}>{clar.question}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+        {clar.options.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            className="ghost-btn"
+            style={{ fontSize: "0.79rem", padding: "0.35rem 0.7rem", textAlign: "left" }}
+            disabled={busy}
+            onClick={() => choose(opt)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {otherMode && (
+        <form onSubmit={submitOther} style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem" }}>
+          <input
+            type="text"
+            placeholder="Enter intended meaning..."
+            value={customText}
+            onChange={(e) => setCustomText(e.target.value)}
+            style={{ flex: 1, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", padding: "0.35rem 0.65rem", fontSize: "0.82rem" }}
+          />
+          <button type="submit" className="primary-btn" style={{ padding: "0.35rem 0.85rem", fontSize: "0.8rem" }} disabled={busy || !customText.trim()}>
+            Apply
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 /* ── Single result card (center+right) ──────────────────────────── */
-function ResultCard({ r, idx }) {
-  const [open, setOpen] = useState(idx === 0);
+function ResultCard({ r, idx, skipped, onClarify, onSkip, onUndo, canUndo }) {
+  const [open, setOpen] = useState(idx === 0 && !r.clarified_by_user);
+
+  async function handleClarify(rec, chosenOption, customText) {
+    await onClarify(rec, chosenOption, customText);
+    setOpen(false);
+  }
+
   return (
     <div className={`result-card ${open ? "open" : ""}`}>
-      <button className="result-header" onClick={() => setOpen((v) => !v)}>
+      <div className="result-header" onClick={() => setOpen((v) => !v)} role="button" tabIndex={0}>
         <div className="result-header-left">
           <span className="result-index">#{idx + 1}</span>
-          <span className="result-text-preview">{r.text}</span>
+          <span className="result-text-preview">
+            {r.clarified_by_user ? (r.resolved_text || r.top_reading) : r.text}
+          </span>
         </div>
         <div className="result-header-right">
+          {r.clarified_by_user && (
+            <>
+              <span className="type-badge" style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", borderColor: "#22c55e" }}>
+                clarified
+              </span>
+              {canUndo && (
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  style={{ padding: "0.15rem 0.5rem", fontSize: "0.74rem" }}
+                  onClick={(e) => { e.stopPropagation(); onUndo(r.id); setOpen(true); }}
+                >
+                  Undo
+                </button>
+              )}
+            </>
+          )}
           <span
             className="type-badge"
             style={{ background: (TYPE_COLORS[r.ambiguity_type] || "#52525b") + "22",
@@ -134,7 +227,14 @@ function ResultCard({ r, idx }) {
           <StatusChip status={r.status} />
           <span className="chevron">{open ? "▲" : "▼"}</span>
         </div>
-      </button>
+      </div>
+
+      {/* Inline Clarify block shown when record has clarification and wasn't skipped */}
+      {r.clarification && !r.clarified_by_user && !skipped && (
+        <div style={{ padding: "0 1.1rem 1rem" }}>
+          <ClarifyBlock record={r} onClarify={handleClarify} onSkip={onSkip} />
+        </div>
+      )}
 
       {open && (
         <div className="result-body">
@@ -145,8 +245,8 @@ function ResultCard({ r, idx }) {
               <HighlightedText text={r.text} type={r.ambiguity_type} />
             </p>
 
-            <p className="col-title">Top reading</p>
-            <p className="top-reading">{r.top_reading}</p>
+            <p className="col-title">Resolved text</p>
+            <p className="top-reading">{r.resolved_text || r.top_reading}</p>
 
             <p className="col-title">Confidence</p>
             <ConfGauge value={r.confidence} />
@@ -166,10 +266,9 @@ function ResultCard({ r, idx }) {
               <p className="muted-sm">No ambiguity detected.</p>
             ) : (
               <div className="prob-list">
-                {/* Top reading bar */}
                 <ProbBar
                   reading={r.top_reading}
-                  probability={1 - r.alternatives.reduce((s, a) => s + a.probability, 0)}
+                  probability={Math.max(0, 1 - r.alternatives.reduce((s, a) => s + a.probability, 0))}
                   isTop
                   conflict={r.conflict}
                 />
@@ -248,12 +347,25 @@ function exportJSON(data) {
   a.click();
 }
 function exportCSV(data) {
-  const headers = ["text", "ambiguity_type", "top_reading", "confidence", "disagreement", "conflict", "status"];
+  const headers = ["text", "resolved_text", "ambiguity_type", "top_reading", "confidence", "disagreement", "conflict", "status"];
   const rows = data.map((r) => headers.map((h) => JSON.stringify(r[h] ?? "")).join(","));
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "ambiguity_results.csv";
+  a.click();
+}
+async function exportPDF(data) {
+  const res = await fetch("/export/resolved.pdf", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ results: data }),
+  });
+  if (!res.ok) return;
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "resolved_results.pdf";
   a.click();
 }
 
@@ -264,6 +376,10 @@ export default function App() {
   const [rawText, setRawText] = useState(SAMPLES.text);
   const [context, setContext] = useState("");
   const [results, setResults] = useState([]);
+  const [undoMap, setUndoMap] = useState({});
+  const [skippedIds, setSkippedIds] = useState({});
+  const [reviewQueueMode, setReviewQueueMode] = useState(false);
+  const [reviewIdx, setReviewIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -300,7 +416,11 @@ export default function App() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to process");
-      setResults(data.results || []);
+      const processed = data.results || [];
+      setResults(processed);
+      setUndoMap({});
+      setSkippedIds({});
+      setReviewIdx(0);
       setFilterType("all");
       setFilterStatus("all");
     } catch (err) {
@@ -308,6 +428,41 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleInlineClarify(rec, chosenOption, customText) {
+    const res = await fetch("/clarify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        record_id: rec.id,
+        chosen_option: chosenOption,
+        custom_text: customText,
+        record: rec,
+      }),
+    });
+    if (!res.ok) return;
+    const updated = await res.json();
+    setUndoMap((prev) => ({ ...prev, [rec.id]: rec }));
+    setResults((prev) => prev.map((item) => (item.id === rec.id ? updated : item)));
+  }
+
+  function handleSkipClarify(id) {
+    setSkippedIds((prev) => ({ ...prev, [id]: true }));
+    if (reviewQueueMode) {
+      setReviewIdx((i) => i + 1);
+    }
+  }
+
+  function handleUndoClarify(id) {
+    const prevRec = undoMap[id];
+    if (!prevRec) return;
+    setResults((prev) => prev.map((item) => (item.id === id ? prevRec : item)));
+    setUndoMap((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   /* Filtered results */
@@ -426,9 +581,17 @@ export default function App() {
                 {/* Summary cards + donut */}
                 <SummaryCards results={results} />
 
-                {/* Filter bar + export */}
+                {/* Filter bar + Review queue + export */}
                 <div className="filter-bar card">
                   <div className="filter-group">
+                    <button
+                      type="button"
+                      className={`toggle-btn ${reviewQueueMode ? "active" : ""}`}
+                      style={{ border: "1px solid var(--border)", padding: "0.35rem 0.75rem" }}
+                      onClick={() => { setReviewQueueMode((v) => !v); setReviewIdx(0); }}
+                    >
+                      Review queue ({results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id]).length})
+                    </button>
                     <select
                       className="filter-select"
                       value={filterType}
@@ -450,19 +613,52 @@ export default function App() {
                   <div className="export-group">
                     <button className="ghost-btn" onClick={() => exportJSON(results)}>Export JSON</button>
                     <button className="ghost-btn" onClick={() => exportCSV(results)}>Export CSV</button>
+                    <button className="ghost-btn" onClick={() => exportPDF(results)}>Export PDF</button>
                   </div>
                 </div>
 
-                {/* Result cards */}
-                <div className="results-list">
-                  {filtered.length === 0 ? (
-                    <div className="empty-full card">
-                      <p>No records match the current filters.</p>
+                {/* Review queue (one REVIEW record at a time, question + options only) OR full list */}
+                {reviewQueueMode ? (() => {
+                  const queue = results.filter((r) => r.status === "REVIEW" && !skippedIds[r.id] && r.clarification);
+                  if (queue.length === 0) {
+                    return (
+                      <div className="empty-full card">
+                        <p>Review queue is empty.</p>
+                      </div>
+                    );
+                  }
+                  const cur = queue[reviewIdx % queue.length];
+                  return (
+                    <div className="card" style={{ borderColor: "var(--accent)" }}>
+                      <p className="col-title" style={{ marginBottom: "0.4rem" }}>
+                        Review Queue ({(reviewIdx % queue.length) + 1} of {queue.length})
+                      </p>
+                      <p style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.5rem" }}>{cur.text}</p>
+                      <ClarifyBlock record={cur} onClarify={handleInlineClarify} onSkip={handleSkipClarify} />
                     </div>
-                  ) : (
-                    filtered.map((r, i) => <ResultCard key={i} r={r} idx={i} />)
-                  )}
-                </div>
+                  );
+                })() : (
+                  <div className="results-list">
+                    {filtered.length === 0 ? (
+                      <div className="empty-full card">
+                        <p>No records match the current filters.</p>
+                      </div>
+                    ) : (
+                      filtered.map((r, i) => (
+                        <ResultCard
+                          key={r.id || i}
+                          r={r}
+                          idx={i}
+                          skipped={Boolean(skippedIds[r.id])}
+                          onClarify={handleInlineClarify}
+                          onSkip={handleSkipClarify}
+                          onUndo={handleUndoClarify}
+                          canUndo={Boolean(undoMap[r.id])}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>

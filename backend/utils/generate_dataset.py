@@ -65,7 +65,7 @@ TYPE_TEMPLATES: dict[str, list[tuple[str, str, list[str], str]]] = {
         ("Everyone did not attend the meeting", "Everyone ... not", ["Not everyone attended the meeting", "Nobody attended the meeting"], "Not everyone attended the meeting"),
         ("He did not leave because he was angry", "not ... because", ["He left, but not due to anger", "He stayed because he was angry"], "He left, but not due to anger"),
         ("All employees received a bonus", "All ... a", ["Each employee received their own bonus", "All employees shared one bonus pool"], "Each employee received their own bonus"),
-        ("Sab band kar do abhi", "Sab", ["Cancel/block every active item on the account", "Block only the primary card right now"], "Cancel/block every active item on the account"),
+        ("Cancel all active items now", "all", ["Cancel/block every active item on the account", "Block only the primary card right now"], "Cancel/block every active item on the account"),
     ],
     "semantic": [
         ("The students carried the piano", "students ... carried", ["The students carried the piano together (collective)", "Each student carried a piano individually (distributive)"], "The students carried the piano together (collective)"),
@@ -149,7 +149,7 @@ MANUAL_TEST_SPECS: list[tuple[str, str, list[str], str, list[str], str, bool]] =
     ("Cancel it before dispatch", "I ordered headphones ORD_5519 yesterday", ["referential"], "it", ["Cancel headphones ORD_5519 before dispatch", "Cancel the billing profile"], "Cancel headphones ORD_5519 before dispatch", True),
     ("Close it now", "My Visa card was stolen on the train", ["referential", "lexical"], "it", ["Block the stolen Visa card now", "Close the user account"], "Block the stolen Visa card now", True),
     ("The model needs retraining", "", ["cultural_domain", "underspecified"], "model", ["The ML model needs retraining", "The fashion model needs coaching"], "The ML model needs retraining", True),
-    ("Sab band kar do abhi", "", ["scope", "underspecified"], "Sab", ["Block/cancel all active items on the account", "Cancel only the latest order"], "Block/cancel all active items on the account", True),
+    ("Cancel all active items now", "", ["scope", "underspecified"], "all", ["Block/cancel all active items on the account", "Cancel only the latest order"], "Block/cancel all active items on the account", True),
     ("Priya saw Meera with her binoculars", "", ["syntactic", "referential"], "with her binoculars", ["Priya used binoculars to see Meera", "Priya saw Meera who had binoculars"], "Priya used binoculars to see Meera", True),
     ("Two chefs cooked five dishes", "", ["semantic", "scope"], "chefs ... cooked", ["Two chefs collaborated on five dishes total", "Each chef cooked five dishes"], "Two chefs collaborated on five dishes total", True),
     ("Could you send 1000 next Friday?", "", ["pragmatic", "temporal_numeric"], "Could you", ["Please send USD 1000 on the upcoming Friday", "Questioning ability to send"], "Please send USD 1000 on the upcoming Friday", True),

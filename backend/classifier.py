@@ -1,8 +1,8 @@
 """
 classifier.py – Multi-label DeBERTa-v3-small inference & spaCy blending.
 
-Loads the fine-tuned model from `backend/models/deberta-ambiguity` (if trained),
-predicts per-type probabilities via sigmoid(logits), blends them with spaCy
+Loads the fine-tuned model from `backend/models/deberta-ambiguity`,
+predicts per-type probabilities, blends them with spaCy
 detector scores using a weighted average, and computes a confidence penalty
 when DeBERTa and spaCy disagree.
 """

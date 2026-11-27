@@ -31,6 +31,7 @@ import io
 import json
 import math
 import os
+import uuid
 from collections import Counter
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -40,6 +41,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from classifier import blend_scores, predict_deberta
+from clarification import RECORD_STORE, build_inline_clarification
 from detectors import detect_all
 from rewrite import rewrite_sentence
 
@@ -101,6 +103,7 @@ class RewriteChange(BaseModel):
 
 
 class ResolvedRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
     text: str
     ambiguity_type: AmbiguityType
     detected_types: list[str] = Field(default_factory=list)
@@ -115,6 +118,8 @@ class ResolvedRecord(BaseModel):
     conflict_reason: Optional[str] = None
     context_used: Optional[str] = None      # one-line evidence summary
     status: RoutingStatus
+    clarification: Optional[dict[str, Any]] = None
+    clarified_by_user: bool = False
     resolution_steps: list[ResolutionStep] = Field(default_factory=list)
 
 
@@ -446,6 +451,14 @@ async def _resolve_single_llm(
         context_items=context_items,
     )
 
+    clarification = build_inline_clarification(
+        text=text,
+        ambiguity_type=amb_type,
+        status=status,
+        top_reading=top_reading,
+        alternatives=[a.model_dump() for a in alternatives],
+    )
+
     return ResolvedRecord(
         text=text,
         ambiguity_type=amb_type,  # type: ignore[arg-type]
@@ -461,6 +474,8 @@ async def _resolve_single_llm(
         conflict_reason=conflict_reason,
         context_used=context_summary,
         status=status,
+        clarification=clarification,
+        clarified_by_user=False,
         resolution_steps=steps,
     )
 
@@ -517,6 +532,13 @@ def _resolve_single_mock(
             confidence=adj_conf,
             context_items=context_items,
         )
+        clarification = build_inline_clarification(
+            text=text,
+            ambiguity_type=amb_type,
+            status=status,
+            top_reading=top_reading,
+            alternatives=[a.model_dump() for a in alternatives],
+        )
         return ResolvedRecord(
             text=text,
             ambiguity_type=amb_type,
@@ -532,10 +554,12 @@ def _resolve_single_mock(
             conflict_reason=conflict_reason,
             context_used=context_summary,
             status=status,
+            clarification=clarification,
+            clarified_by_user=False,
             resolution_steps=steps,
         )
 
-    if any(k in lower for k in ("sab", "all", "everything", "both", "saare")):
+    if any(k in lower for k in ("all", "everything", "both")):
         return _finish(
             "scope",
             "Apply the action to all active items on the account.",
@@ -549,7 +573,7 @@ def _resolve_single_mock(
             "Scope interpretation changes with context." if has_context else None,
         )
 
-    if any(w in lower.split() for w in ("it", "that", "this", "isko", "uska", "woh")):
+    if any(w in lower.split() for w in ("it", "that", "this")):
         return _finish(
             "referential",
             (
@@ -567,7 +591,7 @@ def _resolve_single_mock(
             "Referent changes with context." if has_context else None,
         )
 
-    if any(k in lower for k in ("band", "close", "charge", "bank", "freeze", "cancel")):
+    if any(k in lower for k in ("close", "charge", "bank", "freeze", "cancel")):
         if any(k in lower for k in ("card", "order", "account", "ord_", "txn_")):
             return _finish("none", text, [], 0.94, 0.0, False)
         return _finish(
@@ -670,6 +694,8 @@ async def resolve_batch(
                 detected_types=detected_types,
                 confidence_penalty=conf_penalty,
             )
-        results.append(resolved.model_dump())
+        dumped = resolved.model_dump()
+        RECORD_STORE[dumped["id"]] = dumped
+        results.append(dumped)
 
     return results

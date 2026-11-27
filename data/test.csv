@@ -36,7 +36,7 @@ id,text,context,types,span,readings,gold_reading,is_ambiguous
 2,Every student read a book,,"[""scope""]",Every ... a,"[""Each student read some book"", ""All students read the same book""]",Each student read some book,true
 403,John runs faster than Bill,From ticket #TKT-1406: Context note 1406.,"[""ellipsis"", ""temporal_numeric""]",than Bill,"[""John runs faster than Bill runs"", ""John runs faster than Bill walks""]",John runs faster than Bill runs,true
 118,Permanently close my OnlyBytes user account #1090.,,"[""none""]",,"[""Permanently close my OnlyBytes user account #1090.""]",Permanently close my OnlyBytes user account #1090.,false
-219,Sab band kar do abhi,Note 1222: the user previously asked about the opposite option.,"[""scope""]",Sab,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
+219,Cancel all active items now,Note 1222: the user previously asked about the opposite option.,"[""scope""]",all,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
 7,Flying planes can be dangerous,,"[""syntactic""]",Flying planes,"[""Piloting planes can be dangerous"", ""Planes that are flying can be dangerous""]",Piloting planes can be dangerous,true
 16,It's freezing in this room,,"[""pragmatic""]",It's freezing,"[""Please turn up the heat"", ""Observation about low temperature""]",Please turn up the heat,true
 183,Permanently close my OnlyBytes user account #1185.,,"[""none""]",,"[""Permanently close my OnlyBytes user account #1185.""]",Permanently close my OnlyBytes user account #1185.,false
@@ -75,12 +75,12 @@ id,text,context,types,span,readings,gold_reading,is_ambiguous
 9,Old men and women left early,,"[""syntactic""]",Old men and women,"[""Elderly men and elderly women left early"", ""Elderly men and women of any age left early""]",Elderly men and elderly women left early,true
 46,Permanently delete my OnlyBytes test workspace.,,"[""none""]",,"[""Permanently delete my OnlyBytes test workspace.""]",Permanently delete my OnlyBytes test workspace.,false
 15,Can you close the door?,,"[""pragmatic""]",Can you,"[""Please close the door"", ""Are you able to close the door?""]",Please close the door,true
-30,Sab band kar do abhi,,"[""scope"", ""underspecified""]",Sab,"[""Block/cancel all active items on the account"", ""Cancel only the latest order""]",Block/cancel all active items on the account,true
+30,Cancel all active items now,,"[""scope"", ""underspecified""]",all,"[""Block/cancel all active items on the account"", ""Cancel only the latest order""]",Block/cancel all active items on the account,true
 20,Alice can code and so can Bob,,"[""ellipsis""]",so can Bob,"[""Alice can code and Bob can code too"", ""Bob can code better""]",Alice can code and Bob can code too,true
 77,Reverse the duplicate UPI payment TXN_1037.,Support log #1037: verified request.,"[""none""]",,"[""Reverse the duplicate UPI payment TXN_1037.""]",Reverse the duplicate UPI payment TXN_1037.,false
 131,Track shipment for order ORD_1110.,,"[""none""]",,"[""Track shipment for order ORD_1110.""]",Track shipment for order ORD_1110.,false
 151,Block my Visa debit card ending in 1142.,,"[""none""]",,"[""Block my Visa debit card ending in 1142.""]",Block my Visa debit card ending in 1142.,false
-589,Sab band kar do abhi,From ticket #TKT-1592: Context note 1592.,"[""scope"", ""ellipsis"", ""underspecified""]",Sab,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
+589,Cancel all active items now,From ticket #TKT-1592: Context note 1592.,"[""scope"", ""ellipsis"", ""underspecified""]",all,"[""Cancel/block every active item on the account"", ""Block only the primary card right now""]",Cancel/block every active item on the account,true
 237,Old men and women sat outside,Note 1240: the user previously asked about the opposite option.,"[""syntactic""]",Old men and women,"[""Elderly men and elderly women sat outside"", ""Elderly men and women of any age sat outside""]",Elderly men and elderly women sat outside,true
 28,Close it now,My Visa card was stolen on the train,"[""referential"", ""lexical""]",it,"[""Block the stolen Visa card now"", ""Close the user account""]",Block the stolen Visa card now,true
 11,Everyone did not pass the test,,"[""scope""]",Everyone ... not,"[""Not everyone passed the test"", ""Nobody passed the test""]",Not everyone passed the test,true

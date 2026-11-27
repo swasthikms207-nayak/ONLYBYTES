@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import csv
 import json
+import random
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from resolver import _resolve_single_mock
 ROOT_DIR = Path(__file__).resolve().parent.parent
 TEST_CSV = ROOT_DIR / "data" / "test.csv"
 EVAL_FILE = Path(__file__).resolve().parent / "data" / "eval_sentences.json"
+RESULTS_JSON = ROOT_DIR / "results.json"
 
 ALL_TYPES = [
     "lexical",
@@ -300,7 +302,54 @@ def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
             "pred_reading": pred_reading,
             "confidence": max(full_no_spacy.confidence, best_score) if spacy_is_amb else full_no_spacy.confidence,
             "conflict": full_no_spacy.conflict,
+            "status": full_no_spacy.status,
         })
+
+    def _sim_clarification(error_rate: float) -> dict[str, Any]:
+        rng = random.Random(42)
+        n = len(spacy_llm_items) or 1
+
+        def _run_policy(policy: str) -> dict[str, Any]:
+            correct_before = 0
+            correct_after = 0
+            asked = 0
+            needed = 0
+            for item in spacy_llm_items:
+                is_right_before = item["pred_reading"].strip().lower() == item["gold_top_reading"].strip().lower()
+                if is_right_before:
+                    correct_before += 1
+                should_ask = (
+                    policy == "always_ask"
+                    or (policy == "selective_ask" and item["status"] in {"REVIEW", "ACCEPT_WITH_ALTERNATIVES"} and item["pred_ambiguity_type"] != "none")
+                )
+                if should_ask:
+                    asked += 1
+                    if not is_right_before or item["status"] == "REVIEW" or item["conflict"]:
+                        needed += 1
+                    user_correct = rng.random() >= error_rate
+                    if user_correct:
+                        correct_after += 1
+                else:
+                    if is_right_before:
+                        correct_after += 1
+
+            return {
+                "accuracy_before": round(correct_before / n, 4),
+                "accuracy_after": round(correct_after / n, 4),
+                "questions_per_100": round((asked / n) * 100.0, 2),
+                "share_questions_needed": round(needed / asked, 4) if asked else 0.0,
+            }
+
+        return {
+            "never_ask": _run_policy("never_ask"),
+            "selective_ask": _run_policy("selective_ask"),
+            "always_ask": _run_policy("always_ask"),
+        }
+
+    simulated_user_eval = {
+        "always_correct": _sim_clarification(0.0),
+        "ten_percent_wrong": _sim_clarification(0.10),
+    }
 
     categories = {
         "ambiguous": sum(1 for r in dataset if r["category"] == "ambiguous"),
@@ -314,7 +363,7 @@ def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
     m_llm_only = _compute_metrics(llm_only_items)
     m_spacy_llm = _compute_metrics(spacy_llm_items)
 
-    return {
+    report = {
         "dataset": {
             "total": len(dataset),
             "source": str(TEST_CSV.name if TEST_CSV.exists() else EVAL_FILE.name),
@@ -344,4 +393,12 @@ def run_evaluation(eval_path: Path = TEST_CSV) -> dict[str, Any]:
             "delta_accuracy": round(m_spacy_llm["resolution_accuracy"] - m_llm_only["resolution_accuracy"], 4),
             "delta_fpr": round(m_spacy_llm["false_positive_rate"] - m_llm_only["false_positive_rate"], 4),
         },
+        "simulated_user_clarification": simulated_user_eval,
     }
+
+    try:
+        RESULTS_JSON.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+    return report
