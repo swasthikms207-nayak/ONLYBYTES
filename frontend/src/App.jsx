@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import EvaluationTab from "./components/EvaluationTab.jsx";
+import SemanticLabTab from "./components/SemanticLabTab.jsx";
 
 /* ── Type badge colours ──────────────────────────────────────────── */
 const TYPE_COLORS = {
@@ -467,13 +468,17 @@ export default function App() {
               ← Upload Dataset
             </button>
             <nav className="tab-nav">
-              {["resolver", "evaluation"].map((t) => (
+              {[
+                { id: "resolver", label: "Resolver" },
+                { id: "evaluation", label: "Evaluation" },
+                { id: "semantic_lab", label: "Semantic Lab" },
+              ].map((t) => (
                 <button
-                  key={t}
-                  className={`tab-btn ${page === t ? "active" : ""}`}
-                  onClick={() => setPage(t)}
+                  key={t.id}
+                  className={`tab-btn ${page === t.id ? "active" : ""}`}
+                  onClick={() => setPage(t.id)}
                 >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  {t.label}
                 </button>
               ))}
             </nav>
@@ -575,6 +580,8 @@ export default function App() {
             </form>
           </div>
         </section>
+      ) : page === "semantic_lab" ? (
+        <SemanticLabTab results={results} />
       ) : page === "evaluation" ? (
         <EvaluationTab
           results={results}

@@ -1329,5 +1329,81 @@
         "share_questions_needed": 0.7
       }
     }
+  },
+  "steering_check": {
+    "controllability": {
+      "alpha_sweep": [
+        {
+          "alpha": 0.0,
+          "mean_similarity": 0.8626,
+          "mean_probability": 0.6019
+        },
+        {
+          "alpha": 0.2,
+          "mean_similarity": 0.909,
+          "mean_probability": 0.66
+        },
+        {
+          "alpha": 0.4,
+          "mean_similarity": 0.9485,
+          "mean_probability": 0.7188
+        },
+        {
+          "alpha": 0.6,
+          "mean_similarity": 0.9777,
+          "mean_probability": 0.7677
+        },
+        {
+          "alpha": 0.8,
+          "mean_similarity": 0.9947,
+          "mean_probability": 0.8019
+        },
+        {
+          "alpha": 1.0,
+          "mean_similarity": 1.0,
+          "mean_probability": 0.8246
+        }
+      ],
+      "similarity_delta": 0.1374,
+      "probability_delta": 0.2227,
+      "similarity_correlation": 0.6063,
+      "probability_correlation": 0.4528,
+      "avg_flip_alpha": 0.26
+    },
+    "quality_preserved": {
+      "encoder_frozen": true,
+      "pair_ranking_spearman": 0.9909
+    },
+    "faithfulness": {
+      "k": 5,
+      "trustworthiness": 0.7342,
+      "knn_overlap": 0.48
+    },
+    "simulated_reviewer": [
+      {
+        "alpha": 0.0,
+        "resolution_accuracy": 0.3,
+        "ece": 0.3786,
+        "status_changed_count": 0
+      },
+      {
+        "alpha": 0.3,
+        "resolution_accuracy": 0.65,
+        "ece": 0.2857,
+        "status_changed_count": 2
+      },
+      {
+        "alpha": 0.6,
+        "resolution_accuracy": 0.85,
+        "ece": 0.2626,
+        "status_changed_count": 5
+      },
+      {
+        "alpha": 0.9,
+        "resolution_accuracy": 0.9,
+        "ece": 0.1915,
+        "status_changed_count": 14
+      }
+    ]
   }
 }

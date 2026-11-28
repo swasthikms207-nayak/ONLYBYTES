@@ -144,7 +144,7 @@ function FailureCases({ failures }) {
   );
 }
 
-const EVAL_CACHE_KEY = "ambiguity_resolver_eval_cache_v4";
+const EVAL_CACHE_KEY = "ambiguity_resolver_eval_cache_v5";
 let memoryEvalCache = null;
 
 function clearPreviousEvalCache() {
@@ -566,6 +566,74 @@ export default function EvaluationTab({ results = [], sourceName = "Uploaded Dat
         </p>
         <FailureCases failures={m.failure_cases || []} />
       </div>
+
+      {/* ── Steering Check Card ── */}
+      {data.steering_check && (
+        <div className="card">
+          <p className="col-title" style={{ marginBottom: "0.75rem", color: FINAL_SYSTEM.color }}>
+            Steering Check (Controllability, Quality Preserved, Faithfulness & Simulated Reviewer)
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "0.75rem", marginBottom: "0.9rem" }}>
+            <div style={{ background: "var(--bg)", padding: "0.75rem", borderRadius: 10, border: "1px solid var(--bg3)" }}>
+              <div style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700 }}>Controllability (α: 0 → 1)</div>
+              <div style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                Sim Δ: <strong>+{fmt(data.steering_check.controllability?.similarity_delta)}</strong> · r = <strong>{fmt(data.steering_check.controllability?.similarity_correlation)}</strong>
+              </div>
+              <div style={{ fontSize: "0.85rem" }}>
+                Prob Δ: <strong>+{fmt(data.steering_check.controllability?.probability_delta)}</strong> · r = <strong>{fmt(data.steering_check.controllability?.probability_correlation)}</strong>
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "0.2rem" }}>
+                Avg Flip α: <strong>{data.steering_check.controllability?.avg_flip_alpha == null ? "—" : data.steering_check.controllability.avg_flip_alpha.toFixed(2)}</strong>
+              </div>
+            </div>
+
+            <div style={{ background: "var(--bg)", padding: "0.75rem", borderRadius: 10, border: "1px solid var(--bg3)" }}>
+              <div style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700 }}>Quality Preserved (Frozen Encoder)</div>
+              <div style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                Encoder Frozen: <strong>{data.steering_check.quality_preserved?.encoder_frozen ? "Yes" : "No"}</strong>
+              </div>
+              <div style={{ fontSize: "0.85rem" }}>
+                Pair Ranking ρ: <strong>{fmt(data.steering_check.quality_preserved?.pair_ranking_spearman)}</strong>
+              </div>
+            </div>
+
+            <div style={{ background: "var(--bg)", padding: "0.75rem", borderRadius: 10, border: "1px solid var(--bg3)" }}>
+              <div style={{ fontSize: "0.76rem", color: "var(--muted)", fontWeight: 700 }}>2D Projection Faithfulness</div>
+              <div style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                Trustworthiness: <strong>{fmt(data.steering_check.faithfulness?.trustworthiness)}</strong>
+              </div>
+              <div style={{ fontSize: "0.85rem" }}>
+                k-NN Overlap (k={data.steering_check.faithfulness?.k}): <strong>{fmt(data.steering_check.faithfulness?.knn_overlap)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+              <thead>
+                <tr>
+                  <th style={TH}>Simulated Reviewer</th>
+                  <th style={TH}>Alpha</th>
+                  <th style={{ ...TH, color: FINAL_SYSTEM.color }}>Resolution Acc</th>
+                  <th style={TH}>ECE ↓</th>
+                  <th style={TH}>Status Changed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.steering_check.simulated_reviewer || []).map((row) => (
+                  <tr key={row.alpha} style={{ borderBottom: "1px solid var(--bg3)" }}>
+                    <td style={TD}>{row.alpha === 0 ? "No steering (baseline)" : "Steer toward gold"}</td>
+                    <td style={TD}>{row.alpha.toFixed(1)}</td>
+                    <td style={{ ...TD, fontWeight: 700, color: FINAL_SYSTEM.color }}>{fmt(row.resolution_accuracy)}</td>
+                    <td style={TD}>{fmt(row.ece)}</td>
+                    <td style={TD}>{row.status_changed_count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

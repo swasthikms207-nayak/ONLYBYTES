@@ -12,6 +12,7 @@ from clarification import RECORD_STORE, apply_inline_clarification, apply_mcq_an
 from evaluator import run_evaluation_async
 from pdf_export import build_evaluation_pdf, build_resolved_pdf
 from resolver import ResolvedRecord, parse_csv_records, resolve_batch
+from steering_lab import lab_init, lab_steer
 
 app = FastAPI(title="Ambiguity Resolver API", version="0.2.0")
 
@@ -224,3 +225,29 @@ def export_resolved_pdf(request: ExportResolvedRequest):
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="resolved_results.pdf"'},
     )
+
+
+class LabInitRequest(BaseModel):
+    sentence: str
+    context: Optional[str] = None
+
+
+class LabSteerRequest(BaseModel):
+    sentence_id: str
+    target_reading: str
+    alpha: float = 0.5
+
+
+@app.post("/lab/init")
+async def post_lab_init(request: LabInitRequest):
+    if not request.sentence.strip():
+        raise HTTPException(status_code=400, detail="Sentence cannot be empty.")
+    return await lab_init(request.sentence.strip(), context=request.context)
+
+
+@app.post("/lab/steer")
+def post_lab_steer(request: LabSteerRequest):
+    try:
+        return lab_steer(request.sentence_id, request.target_reading, request.alpha)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))

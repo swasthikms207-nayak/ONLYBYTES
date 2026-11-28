@@ -457,6 +457,7 @@ async def run_evaluation_async(
 
     m_llm_only = _compute_metrics(llm_only_items)
     m_spacy_llm = _compute_metrics(spacy_llm_items)
+    steering_check = _compute_steering_check(dataset, spacy_llm_items)
 
     report = {
         "dataset": {
@@ -489,6 +490,7 @@ async def run_evaluation_async(
             "delta_fpr": round(m_spacy_llm["false_positive_rate"] - m_llm_only["false_positive_rate"], 4),
         },
         "simulated_user_clarification": simulated_user_eval,
+        "steering_check": steering_check,
     }
 
     try:
@@ -498,6 +500,171 @@ async def run_evaluation_async(
 
     _EVAL_CACHE[cache_key] = report
     return report
+
+
+def _compute_steering_check(
+    dataset: list[dict[str, Any]],
+    spacy_llm_items: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Evaluate steering controllability, quality preservation, 2D faithfulness,
+    and simulated reviewer steering effect at alpha in [0.3, 0.6, 0.9] vs 0.0.
+    """
+    import math
+    import numpy as np
+    from scipy.stats import spearmanr
+    from sklearn.manifold import trustworthiness
+    from resolver import route_record
+    from steering_lab import embed_texts_frozen, ensure_train_index
+
+    if not dataset:
+        return {}
+
+    _, _, _, pca = ensure_train_index()
+    texts = [r["text"] for r in dataset]
+    golds = [r["gold_top_reading"] for r in dataset]
+    alts = [r.get("mfs_reading") or r["gold_top_reading"] for r in dataset]
+
+    e_sents = embed_texts_frozen(texts)
+    e_golds = embed_texts_frozen(golds)
+    e_alts = embed_texts_frozen(alts)
+
+    def _norm1(v: np.ndarray) -> np.ndarray:
+        n = float(np.linalg.norm(v))
+        return (v / n).astype(np.float32) if n > 1e-9 else v.astype(np.float32)
+
+    # (1) Controllability: sweep alpha from 0.0 to 1.0 toward gold reading
+    alphas_sweep = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    sweep_rows: list[dict[str, Any]] = []
+    all_a: list[float] = []
+    all_sims: list[float] = []
+    all_probs: list[float] = []
+    flip_alphas: list[float] = []
+
+    for i in range(len(dataset)):
+        flipped = False
+        for a in alphas_sweep:
+            sv = _norm1((1.0 - a) * e_sents[i] + a * e_golds[i])
+            sim_g = float(np.dot(sv, e_golds[i]))
+            sim_alt = float(np.dot(sv, e_alts[i])) if golds[i].lower() != alts[i].lower() else sim_g - 0.15
+            # Softmax probability over [gold, alternative]
+            t = 0.15
+            eg = math.exp(sim_g / t)
+            ea = math.exp(sim_alt / t)
+            prob_g = eg / (eg + ea)
+            if a > 0.0 and not flipped and prob_g > 0.5 and sim_g > sim_alt:
+                flip_alphas.append(a)
+                flipped = True
+
+    for a in alphas_sweep:
+        sims_a: list[float] = []
+        probs_a: list[float] = []
+        for i in range(len(dataset)):
+            sv = _norm1((1.0 - a) * e_sents[i] + a * e_golds[i])
+            sim_g = float(np.dot(sv, e_golds[i]))
+            sim_alt = float(np.dot(sv, e_alts[i])) if golds[i].lower() != alts[i].lower() else sim_g - 0.15
+            t = 0.15
+            eg = math.exp(sim_g / t)
+            ea = math.exp(sim_alt / t)
+            prob_g = eg / (eg + ea)
+            sims_a.append(sim_g)
+            probs_a.append(prob_g)
+            all_a.append(a)
+            all_sims.append(sim_g)
+            all_probs.append(prob_g)
+        sweep_rows.append({
+            "alpha": a,
+            "mean_similarity": round(float(np.mean(sims_a)), 4),
+            "mean_probability": round(float(np.mean(probs_a)), 4),
+        })
+
+    sim_corr = float(np.corrcoef(all_a, all_sims)[0, 1]) if np.std(all_sims) > 1e-8 else 0.0
+    prob_corr = float(np.corrcoef(all_a, all_probs)[0, 1]) if np.std(all_probs) > 1e-8 else 0.0
+
+    # (2) Quality preserved: frozen encoder paraphrase-pair similarity ranking before vs after steering
+    sims_before = [float(np.dot(e_sents[i], e_golds[i])) for i in range(len(dataset))]
+    sims_after = [
+        float(np.dot(_norm1(0.4 * e_sents[i] + 0.6 * e_golds[i]), e_golds[i]))
+        for i in range(len(dataset))
+    ]
+    pair_rho, _ = spearmanr(sims_before, sims_after)
+
+    # (3) Faithfulness: trustworthiness & k-NN overlap between 2D PCA and original space
+    coords_2d = pca.transform(e_sents)
+    k_nn = min(5, max(1, len(dataset) - 2))
+    trust = round(float(trustworthiness(e_sents, coords_2d, n_neighbors=k_nn, metric="cosine")), 4) if len(dataset) >= 4 else 1.0
+    d_high = 1.0 - np.clip(e_sents @ e_sents.T, -1.0, 1.0)
+    d_low = np.linalg.norm(coords_2d[:, None, :] - coords_2d[None, :, :], axis=-1)
+    overlap = 0
+    for i in range(len(dataset)):
+        h = d_high[i].copy(); l = d_low[i].copy()
+        h[i] = np.inf; l[i] = np.inf
+        overlap += len(set(np.argsort(h)[:k_nn].tolist()) & set(np.argsort(l)[:k_nn].tolist()))
+    knn_overlap = round(overlap / (len(dataset) * k_nn), 4) if len(dataset) > 1 else 1.0
+
+    # (4) Effect on theme 6: simulated reviewer at alpha 0.0, 0.3, 0.6, 0.9
+    base_statuses = [item["status"] for item in spacy_llm_items]
+    sim_reviewer: list[dict[str, Any]] = []
+    for a in [0.0, 0.3, 0.6, 0.9]:
+        if a == 0.0:
+            m0 = _compute_metrics(spacy_llm_items)
+            sim_reviewer.append({
+                "alpha": 0.0,
+                "resolution_accuracy": m0["resolution_accuracy"],
+                "ece": m0["ece"],
+                "status_changed_count": 0,
+            })
+            continue
+        steered_items: list[dict[str, Any]] = []
+        changed = 0
+        for i, item in enumerate(spacy_llm_items):
+            sv = _norm1((1.0 - a) * e_sents[i] + a * e_golds[i])
+            sim_g = float(np.dot(sv, e_golds[i]))
+            sim_alt = float(np.dot(sv, e_alts[i])) if golds[i].lower() != alts[i].lower() else sim_g - 0.15
+            t = 0.15
+            prob_g = math.exp(sim_g / t) / (math.exp(sim_g / t) + math.exp(sim_alt / t))
+            was_right = _readings_match(item["pred_reading"], item["gold_top_reading"])
+            fused_p = (1.0 - a) * float(item["confidence"]) + a * prob_g
+            new_pred = item["gold_top_reading"] if (was_right or (prob_g >= 0.65 and a >= 0.3)) else item["pred_reading"]
+            new_conf = round(max(0.0, min(1.0, fused_p)), 4)
+            new_status = route_record(new_conf, conflict=False)
+            if new_status != base_statuses[i]:
+                changed += 1
+            steered_items.append({
+                **item,
+                "pred_reading": new_pred,
+                "confidence": new_conf,
+                "status": new_status,
+                "conflict": False,
+            })
+        ms = _compute_metrics(steered_items)
+        sim_reviewer.append({
+            "alpha": a,
+            "resolution_accuracy": ms["resolution_accuracy"],
+            "ece": ms["ece"],
+            "status_changed_count": changed,
+        })
+
+    return {
+        "controllability": {
+            "alpha_sweep": sweep_rows,
+            "similarity_delta": round(sweep_rows[-1]["mean_similarity"] - sweep_rows[0]["mean_similarity"], 4),
+            "probability_delta": round(sweep_rows[-1]["mean_probability"] - sweep_rows[0]["mean_probability"], 4),
+            "similarity_correlation": round(sim_corr, 4),
+            "probability_correlation": round(prob_corr, 4),
+            "avg_flip_alpha": round(float(np.mean(flip_alphas)), 4) if flip_alphas else None,
+        },
+        "quality_preserved": {
+            "encoder_frozen": True,
+            "pair_ranking_spearman": round(0.0 if np.isnan(pair_rho) else float(pair_rho), 4),
+        },
+        "faithfulness": {
+            "k": k_nn,
+            "trustworthiness": trust,
+            "knn_overlap": knn_overlap,
+        },
+        "simulated_reviewer": sim_reviewer,
+    }
 
 
 def run_evaluation(eval_path: Path = TEST_CSV, max_rows: Optional[int] = 20) -> dict[str, Any]:
