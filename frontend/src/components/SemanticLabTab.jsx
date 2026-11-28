@@ -373,7 +373,7 @@ export default function SemanticLabTab({ results = [] }) {
                     {activeStatus.replace(/_/g, " ")}
                   </span>
                 </div>
-                <MeterBar label="Calibrated Confidence" value={activeConf} color="#3b82f6" />
+                <MeterBar label="Fused confidence" value={activeConf} color="#3b82f6" />
               </div>
 
               <div style={CARD_DARK}>

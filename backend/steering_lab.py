@@ -343,6 +343,18 @@ def lab_steer(sentence_id: str, target_reading: str, alpha: float) -> dict[str, 
         context_items=state["context_items"],
     )
     steered_2d = _project_2d(steered, pca)[0]
+    debug_info = {
+        "original_to_readings_similarity": [
+            {"reading": r["reading"], "similarity": round(float(np.dot(e_sentence, er)), 4)}
+            for r, er in zip(readings, e_readings)
+        ],
+        "steered_to_target_similarity": round(float(np.dot(steered, e_target)), 4),
+        "points_2d": {
+            "alpha_0": _project_2d(e_sentence, pca)[0],
+            "alpha_current": steered_2d,
+            "alpha_1": _project_2d(e_target, pca)[0],
+        },
+    }
 
     return {
         "sentence_id": sentence_id,
@@ -357,4 +369,5 @@ def lab_steer(sentence_id: str, target_reading: str, alpha: float) -> dict[str, 
         "status": status,
         "rewrite": rw,
         "steered_point_2d": steered_2d,
+        "debug": debug_info,
     }
